@@ -1,0 +1,24 @@
+import Phaser from "phaser";
+import MenuScreenScene from './MenuScreenScene';
+import BattleScene from './BattleScene';
+import PreBattleSetupScene from './PreBattleSetupScene';
+import EndGameScene from './EndGameScene'; // Import the new scene
+
+const config = {
+    type: Phaser.AUTO,
+    scale: {
+        mode: Phaser.Scale.FIT,
+        width: 1920,
+        height: 1080,
+        autoCenter: Phaser.Scale.CENTER_BOTH
+    },
+
+    physics: {
+        default: 'arcade',
+        arcade: {
+            debug: false
+        }
+    },
+    scene: [MenuScreenScene, PreBattleSetupScene, BattleScene, EndGameScene] // Add EndGameScene here
+};
+const game = new Phaser.Game(config);

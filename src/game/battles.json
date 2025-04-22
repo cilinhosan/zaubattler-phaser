@@ -1,0 +1,23 @@
+[
+  {
+    "battleId": 1,
+    "enemies": [
+      { "type": "wolf", "level": 1 }
+    ]
+  },
+  {
+    "battleId": 2,
+    "enemies": [
+      { "type": "wolf", "level": 1 },
+      { "type": "werewolf", "level": 2 }
+    ]
+  },
+  {
+    "battleId": 3,
+    "enemies": [
+        { "type": "werewolf", "level": 2 },
+        { "type": "werewolf", "level": 2 },
+        { "type": "red_ufo", "level": 3 }
+    ]
+  }
+]
