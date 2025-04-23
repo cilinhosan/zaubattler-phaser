@@ -3,7 +3,7 @@ import Phaser from 'phaser';
 const MAX_SLOTS = 5;
 const BOX_WIDTH = 150;
 const BOX_HEIGHT = 180;
-const PADDING = 40;
+const PADDING = 60; // Increased by half (40 + 40/2)
 
 const PLAYER_START_X = 300;
 const PLAYER_START_Y = 400;
@@ -12,7 +12,7 @@ const ENEMY_START_X = 1400; // Adjusted for 1080p
 const ENEMY_START_Y = 400; // Adjusted for 1080p
 
 const HP_BAR_HEIGHT = 10;
-const HP_BAR_Y_OFFSET = 25; // Offset from the bottom of the box
+const HP_BAR_Y_OFFSET = 12.5; // Decreased by half (25 / 2)
 
 class CharacterDisplay {
     constructor(scene, character, teamType, slotIndex) {

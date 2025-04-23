@@ -11,13 +11,18 @@ const Elements = {
     DARK: "Dark"
 };
 
-const characterPool = [
-    new Character("Alina", baseStats, Elements.PLANT, {}),
-    new Character("Bella", baseStats, Elements.WATER, {}),
-    new Character("Emilia", baseStats, Elements.EARTH, {}),
-    new Character("Meryl", baseStats, Elements.FIRE, {}),
-    new Character("Dorothy", baseStats, Elements.DARK, {}),
-    new Character("Elzette", baseStats, Elements.LIGHT, {}),
-];
+const createCharacterPool = () => {
+    // Deep copy baseStats to ensure each character gets its own stats object
+    const getBaseStats = () => ({ ...baseStats });
 
-export default characterPool;
+    return [
+        new Character("Alina", getBaseStats(), Elements.PLANT, {}),
+        new Character("Bella", getBaseStats(), Elements.WATER, {}),
+        new Character("Emilia", getBaseStats(), Elements.EARTH, {}),
+        new Character("Meryl", getBaseStats(), Elements.FIRE, {}),
+        new Character("Dorothy", getBaseStats(), Elements.DARK, {}),
+        new Character("Elzette", getBaseStats(), Elements.LIGHT, {}),
+    ];
+};
+
+export default createCharacterPool;

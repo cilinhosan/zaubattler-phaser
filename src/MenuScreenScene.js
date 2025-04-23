@@ -1,6 +1,6 @@
 import Phaser from "phaser";
 import Character from "./game/Character"; // Import Character class
-import characterPool from "./game/characterPool"; // Import characterPool
+import createCharacterPool from "./game/characterPool"; // Import the function
 
 class MenuScreenScene extends Phaser.Scene {
     constructor() {
@@ -38,7 +38,8 @@ class MenuScreenScene extends Phaser.Scene {
         playText.on('pointerdown', () => {
             // Select 2 random characters from the pool for the player team
             const playerTeam = [];
-            const poolCopy = [...characterPool]; // Create a copy to avoid modifying the original pool
+            const freshCharacterPool = createCharacterPool(); // Get a fresh pool
+            const poolCopy = [...freshCharacterPool]; // Create a copy to avoid modifying the new pool
 
             for (let i = 0; i < 2; i++) {
                 if (poolCopy.length > 0) {

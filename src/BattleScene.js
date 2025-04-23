@@ -23,92 +23,25 @@ class BattleScene extends Phaser.Scene {
         this.enemyTeam = data.enemyTeam;
         this.battleIndex = data.battleIndex; // Store the current battle index
 
-        // Define character box dimensions and positions
-        // Define character box dimensions and positions for 1080p
-        const playerStartX = 300; // Adjusted position
-        const playerStartY = 400; // Adjusted position
-        const boxWidth = 150; // Increased size
-        const boxHeight = 180; // Increased size
-        const padding = 40; // Increased padding
-        const enemyStartX = 1400; // Adjusted position for right side
-        const enemyStartY = 400; // Adjusted position
-
-        // Draw player characters as boxes and add HP bars
-        this.playerTeam.forEach((char, index) => {
-            char.graphics = this.add.graphics();
-            const rectX = playerStartX;
-            const rectY = playerStartY + (boxHeight + padding) * index;
-            const rectW = boxWidth;
-            const rectH = boxHeight;
-
-            char.graphics.setPosition(rectX, rectY);
-            char.graphics.lineStyle(2, 0xffffff, 1);
-            char.graphics.strokeRect(0, 0, rectW, rectH);
-            // Adjusted font size and removed scaling
-            char.text = this.add.text(rectX + rectW / 2, rectY + rectH / 2, char.name, { fontSize: '32px', fill: '#fff' }).setOrigin(0.5);
-
-            char.rectX = rectX;
-            char.rectY = rectY;
-            char.rectWidth = rectW;
-            char.rectHeight = rectH;
-
-            // Add HP bar below the character box
-            const hpBarWidth = rectW;
-            const hpBarHeight = 10; // Standard HP bar height
-            const hpBarY = rectY + rectH; // 25 pixels below the box (shifted down by another 10)
-
-            char.hpBar = this.add.graphics();
-            char.hpBar.fillStyle(0x00ff00, 1); // Green color for HP
-            char.hpBar.fillRect(rectX, hpBarY, hpBarWidth, hpBarHeight);
-
-            // Ensure maxHp is set, default to current hp if not already set
+        // Create CharacterDisplay instances for player team
+        this.playerDisplays = this.playerTeam.map((char, index) => {
+            // Ensure maxHp is set before creating display
             char.maxHp = char.maxHp || char.hp;
-
-            // Adjusted font size and stroke thickness
-            char.hpText = this.add.text(rectX + hpBarWidth / 2, hpBarY + hpBarHeight / 2, `${char.hp}/${char.maxHp}`, { fontSize: '24px', fill: '#fff' }) // Increased font size
-                .setOrigin(0.5)
-                .setStroke('#000000', 4); // Increased stroke thickness
+            const display = new CharacterDisplay(this, char, 'player', index);
+            // Store display reference on character for easy lookup (optional, but can be helpful)
+            char.display = display;
+            return display;
         });
 
-        // Draw enemy characters as boxes and add HP bars
-        this.enemyTeam.forEach((char, index) => {
-            char.graphics = this.add.graphics();
-            const rectX = enemyStartX;
-            const rectY = enemyStartY + (boxHeight + padding) * index;
-            const rectW = boxWidth;
-            const rectH = boxHeight;
-
-            char.graphics.setPosition(rectX, rectY);
-            char.graphics.lineStyle(2, 0xffffff, 1);
-            char.graphics.strokeRect(0, 0, rectW, rectH);
-            // Use character.type or name for display
-            const displayName = char.name || char.type;
-            // Adjusted font size and removed scaling
-            char.text = this.add.text(rectX + rectW / 2, rectY + rectH / 2, `${displayName} Lvl ${char.level}`, { fontSize: '32px', fill: '#fff' }).setOrigin(0.5);
-
-            char.rectX = rectX;
-            char.rectY = rectY;
-            char.rectWidth = rectW;
-            char.rectHeight = rectH;
-
-            // Add HP bar below the character box
-            const hpBarWidth = rectW;
-            const hpBarHeight = 10; // Standard HP bar height
-            const hpBarY = rectY + rectH; // 25 pixels below the box (shifted down by another 10)
-
-            char.hpBar = this.add.graphics();
-            char.hpBar.fillStyle(0x00ff00, 1); // Green color for HP
-            char.hpBar.fillRect(rectX, hpBarY, hpBarWidth, hpBarHeight);
-
-            // Ensure maxHp is set, default to current hp if not already set
+        // Create CharacterDisplay instances for enemy team
+        this.enemyDisplays = this.enemyTeam.map((char, index) => {
+            // Ensure maxHp is set before creating display
             char.maxHp = char.maxHp || char.hp;
-
-            // Adjusted font size and stroke thickness
-            char.hpText = this.add.text(rectX + hpBarWidth / 2, hpBarY + hpBarHeight / 2, `${char.hp}/${char.maxHp}`, { fontSize: '24px', fill: '#fff' }) // Increased font size
-                .setOrigin(0.5)
-                .setStroke('#000000', 4); // Increased stroke thickness
+            const display = new CharacterDisplay(this, char, 'enemy', index);
+            // Store display reference on character
+            char.display = display;
+            return display;
         });
-
 
         // Battle state variables
         this.currentTurn = 'player'; // 'player' or 'enemy'
@@ -141,25 +74,31 @@ class BattleScene extends Phaser.Scene {
 
     playerAttack() {
         // Select a random active player character
-        const attacker = this.playerTeam[Math.floor(Math.random() * this.playerTeam.length)];
+        const attackerIndex = Math.floor(Math.random() * this.playerTeam.length);
+        const attacker = this.playerTeam[attackerIndex];
+        const attackerDisplay = this.playerDisplays[attackerIndex]; // Get corresponding display
 
         // Select a random active enemy character
-        const target = this.enemyTeam[Math.floor(Math.random() * this.enemyTeam.length)];
+        const targetIndex = Math.floor(Math.random() * this.enemyTeam.length);
+        const target = this.enemyTeam[targetIndex];
+        const targetDisplay = this.enemyDisplays[targetIndex]; // Get corresponding display
 
-        // Check if attacker and target are valid and have graphics objects
-        if (!attacker || !attacker.graphics || !target || !target.graphics) {
-             this.endBattle(); // Or perhaps just skip this attack turn
+        // Check if attacker and target displays are valid
+        if (!attackerDisplay || !targetDisplay) {
+             console.warn("Attacker or target display not found, skipping turn.");
+             this.endTurn('enemy'); // Skip to next turn
              return;
         }
 
         // Visual feedback for attack
         const yellowHighlight = this.add.graphics();
         yellowHighlight.lineStyle(4, 0xffff00, 1);
-        yellowHighlight.strokeRect(attacker.graphics.x, attacker.graphics.y, attacker.rectWidth, attacker.rectHeight);
-        const attackIndicator = this.drawAttackIndicator(attacker, target);
+        // Use display properties for position and size
+        yellowHighlight.strokeRect(attackerDisplay.graphics.x, attackerDisplay.graphics.y, attackerDisplay.rectWidth, attackerDisplay.rectHeight);
+        const attackIndicator = this.drawAttackIndicator(attackerDisplay, targetDisplay); // Pass displays
 
-        // Shake target and temporarily change border to red
-        this.shakeElement(target);
+        // Shake target using its display method
+        targetDisplay.shake();
 
         // Calculate damage (simple attack - defense)
         const damage = Math.max(0, attacker.atk - target.def);
@@ -168,57 +107,57 @@ class BattleScene extends Phaser.Scene {
 
         console.log(`Player ${attacker.name} attacks Enemy ${target.name || target.type} for ${damage} damage. Enemy HP: ${target.hp}`);
 
-        // Update HP bar and text for the target
-        this.updateHpDisplay(target);
+        // Update HP bar and text for the target using its display method
+        targetDisplay.updateHpDisplay();
 
         // Remove defeated enemy
-        let targetDefeated = false;
         if (target.hp <= 0) {
-            targetDefeated = true;
-            this.enemyTeam = this.enemyTeam.filter(char => char !== target);
-            target.graphics.destroy();
-            target.text.destroy();
-            target.hpBar.destroy(); // Destroy HP bar
-            target.hpText.destroy(); // Destroy HP text
             console.log(`Enemy ${target.name || target.type} defeated!`);
+            targetDisplay.destroy(); // Destroy display elements
+            // Remove from arrays
+            this.enemyTeam.splice(targetIndex, 1);
+            this.enemyDisplays.splice(targetIndex, 1);
+
+            // Re-index remaining displays if necessary (or handle lookup differently)
+            // For simplicity, we might skip re-indexing if lookup uses character reference
         }
 
         // Revert visual changes and switch turn after a delay
         this.time.delayedCall(800, () => {
             attackIndicator.destroy();
-            // redHighlight is removed
             yellowHighlight.destroy();
-            // Border color is reset within shakeElement's onComplete
-            // Redraw target white border only if it wasn't defeated and graphics exist (This might be redundant now)
-            if (!targetDefeated && target.graphics && !target.graphics.isDestroyed) {
-                 this.highlightBorder(target.graphics, target.rectX, target.rectY, target.rectWidth, target.rectHeight, 0xffffff, 2);
-            }
-            this.currentTurn = 'enemy';
-            this.time.delayedCall(800, this.startTurn, [], this); // Start next turn
+            // Border color reset is handled by shake() in CharacterDisplay
+            this.endTurn('enemy'); // Use helper to switch turn
         }, [], this);
     }
 
     enemyAttack() {
         // Select a random active enemy character
-        const attacker = this.enemyTeam[Math.floor(Math.random() * this.enemyTeam.length)];
+        const attackerIndex = Math.floor(Math.random() * this.enemyTeam.length);
+        const attacker = this.enemyTeam[attackerIndex];
+        const attackerDisplay = this.enemyDisplays[attackerIndex]; // Get corresponding display
 
         // Select a random active player character
-        const target = this.playerTeam[Math.floor(Math.random() * this.playerTeam.length)];
+        const targetIndex = Math.floor(Math.random() * this.playerTeam.length);
+        const target = this.playerTeam[targetIndex];
+        const targetDisplay = this.playerDisplays[targetIndex]; // Get corresponding display
 
-        // Check if attacker and target are valid and have graphics objects
-        if (!attacker || !attacker.graphics || !target || !target.graphics) {
-             this.endBattle(); // Or perhaps just skip this attack turn
+        // Check if attacker and target displays are valid
+        if (!attackerDisplay || !targetDisplay) {
+             console.warn("Attacker or target display not found, skipping turn.");
+             this.endTurn('player'); // Skip to next turn
              return;
         }
 
         // Visual feedback for attack
         const yellowHighlight = this.add.graphics();
         yellowHighlight.lineStyle(4, 0xffff00, 1);
-        yellowHighlight.strokeRect(attacker.graphics.x, attacker.graphics.y, attacker.rectWidth, attacker.rectHeight);
-        const attackIndicator = this.drawAttackIndicator(attacker, target);
+        // Use display properties for position and size
+        yellowHighlight.strokeRect(attackerDisplay.graphics.x, attackerDisplay.graphics.y, attackerDisplay.rectWidth, attackerDisplay.rectHeight);
+        const attackIndicator = this.drawAttackIndicator(attackerDisplay, targetDisplay); // Pass displays
 
-        // Shake target and temporarily change border to red
-        this.shakeElement(target);
+        // Shake target using its display method
+        targetDisplay.shake();
 
         // Calculate damage
         const damage = Math.max(0, attacker.atk - target.def);
@@ -227,128 +166,62 @@ class BattleScene extends Phaser.Scene {
 
         console.log(`Enemy ${attacker.name || attacker.type} attacks Player ${target.name} for ${damage} damage. Player HP: ${target.hp}`);
 
-        // Update HP bar and text for the target
-        this.updateHpDisplay(target);
+        // Update HP bar and text for the target using its display method
+        targetDisplay.updateHpDisplay();
 
         // Remove defeated player
-        let targetDefeated = false;
         if (target.hp <= 0) {
-            targetDefeated = true;
-            this.playerTeam = this.playerTeam.filter(char => char !== target);
-            target.graphics.destroy();
-            target.text.destroy();
-            target.hpBar.destroy(); // Destroy HP bar
-            target.hpText.destroy(); // Destroy HP text
             console.log(`Player ${target.name} defeated!`);
+            targetDisplay.destroy(); // Destroy display elements
+            // Remove from arrays
+            this.playerTeam.splice(targetIndex, 1);
+            this.playerDisplays.splice(targetIndex, 1);
+
+             // Re-index remaining displays if necessary
         }
 
         // Revert visual changes and switch turn after a delay
         this.time.delayedCall(800, () => {
             attackIndicator.destroy();
-            // redHighlight is removed
             yellowHighlight.destroy();
-            // Border color is reset within shakeElement's onComplete
-            // Redraw target white border only if it wasn't defeated and graphics exist (This might be redundant now)
-            if (!targetDefeated && target.graphics && !target.graphics.isDestroyed) {
-                this.highlightBorder(target.graphics, target.rectX, target.rectY, target.rectWidth, target.rectHeight, 0xffffff, 2);
-            }
-            this.currentTurn = 'player';
-            this.turnCounter++;
-            this.turnText.setText(`Turn: ${this.turnCounter}`);
-            this.time.delayedCall(800, this.startTurn, [], this); // Start next turn
+            // Border color reset is handled by shake() in CharacterDisplay
+            this.endTurn('player'); // Use helper to switch turn
         }, [], this);
     }
 
-    updateHpDisplay(character) {
-        if (!character || !character.hpBar || !character.hpText || !character.graphics || character.graphics.isDestroyed) {
-            // Don't try to update display for destroyed characters
-            return;
+    // Helper function to switch turns and start the next one
+    endTurn(nextTurn) {
+        this.currentTurn = nextTurn;
+        if (nextTurn === 'player') { // Only increment turn counter when it becomes player's turn
+             this.turnCounter++;
+             this.turnText.setText(`Turn: ${this.turnCounter}`);
         }
-        // Calculate HP percentage
-        const hpPercentage = Math.max(0, character.hp / character.maxHp); // Ensure percentage is not negative
-
-        // Update HP bar width
-        const hpBarWidth = character.rectWidth * hpPercentage;
-        character.hpBar.clear();
-        character.hpBar.fillStyle(0x00ff00, 1); // Green color for HP
-        character.hpBar.fillRect(character.rectX, character.rectY + character.rectHeight + 25, hpBarWidth, 10); // 25 pixels below the box (shifted down by another 10)
-
-        // Update HP text
-        character.hpText.setText(`${character.hp}/${character.maxHp}`);
-        // Adjusted vertical position to be centered within the HP bar, shifted down by another 10
-        character.hpText.setPosition(character.rectX + character.rectWidth / 2, character.rectY + character.rectHeight + 25 + 10 / 2);
+        // Check for end conditions *before* starting the next turn delay
+        if (this.playerTeam.length === 0 || this.enemyTeam.length === 0) {
+            this.endBattle();
+        } else {
+            this.time.delayedCall(800, this.startTurn, [], this); // Start next turn
+        }
     }
 
-    drawAttackIndicator(attacker, target) {
-        // console.log("Attacker:", attacker);
-        // console.log("Target:", target);
+    // Updated to use CharacterDisplay instances
+    drawAttackIndicator(attackerDisplay, targetDisplay) {
         const line = this.add.graphics();
-        line.lineStyle(2, 0xffff00, 1); // Yellow line, 2px thickness, 1 alpha
-        // Use character's graphics object's scene position and rectangle dimensions
-        const attackerCenterX = attacker.graphics.x + attacker.rectWidth / 2;
-        const attackerCenterY = attacker.graphics.y + attacker.rectHeight / 2;
-        const targetCenterX = target.graphics.x + target.rectWidth / 2;
-        const targetCenterY = target.graphics.y + target.rectHeight / 2;
+        line.lineStyle(2, 0xffff00, 1); // Yellow line
+
+        // Use display's graphics object position and dimensions
+        const attackerCenterX = attackerDisplay.graphics.x + attackerDisplay.rectWidth / 2;
+        const attackerCenterY = attackerDisplay.graphics.y + attackerDisplay.rectHeight / 2;
+        const targetCenterX = targetDisplay.graphics.x + targetDisplay.rectWidth / 2;
+        const targetCenterY = targetDisplay.graphics.y + targetDisplay.rectHeight / 2;
+
         line.lineBetween(attackerCenterX, attackerCenterY, targetCenterX, targetCenterY);
         return line;
     }
 
-    highlightBorder(graphics, rectX, rectY, rectWidth, rectHeight, color, thickness) {
-        if (!graphics || graphics.isDestroyed) return; // Check if graphics object exists
-        graphics.clear();
-        graphics.lineStyle(thickness, color, 1);
-        // Draw rectangle at (0,0) relative to graphics object's position
-        graphics.strokeRect(0, 0, rectWidth, rectHeight);
-    }
-
-    shakeElement(character) { // Removed highlightGraphics parameter
-        if (!character || !character.graphics || character.graphics.isDestroyed) return; // Check if character and graphics exist
-
-        const originalGraphicsX = character.graphics.x;
-        const originalBorderColor = 0xffffff; // Assuming default is white
-        const hitBorderColor = 0xff0000; // Red for hit
-        const borderThickness = 2; // Assuming default thickness
-
-        // Change border to red immediately
-        this.highlightBorder(character.graphics, 0, 0, character.rectWidth, character.rectHeight, hitBorderColor, borderThickness);
-
-        this.tweens.add({
-            targets: character.graphics, // Shake the graphics object
-            x: { from: originalGraphicsX, to: originalGraphicsX + 10 },
-            ease: 'Sine.easeInOut', // Smoother shake
-            duration: 50,
-            repeat: 3, // Slightly more shakes
-            yoyo: true,
-            onComplete: () => {
-                // Ensure graphics object returns to its original position and color if it still exists
-                if (character.graphics && !character.graphics.isDestroyed) {
-                    character.graphics.x = originalGraphicsX;
-                    // Change border back to original color
-                    this.highlightBorder(character.graphics, 0, 0, character.rectWidth, character.rectHeight, originalBorderColor, borderThickness);
-                }
-            }
-        });
-
-        // Shake text if it exists
-        if (character.text && character.text.scene) { // Check if text exists and belongs to a scene
-            const originalTextX = character.text.x;
-             this.tweens.add({
-                targets: character.text, // Shake the text object
-                x: { from: originalTextX, to: originalTextX + 10 },
-                ease: 'Sine.easeInOut',
-                duration: 50,
-                repeat: 3,
-                yoyo: true,
-                onComplete: () => {
-                    // Check if character.text still exists before accessing x
-                    if (character.text && character.text.scene) {
-                        character.text.x = originalTextX;
-                    }
-                }
-            });
-        }
-        // Removed tween for highlightGraphics
-    }
+    // highlightBorder is now part of CharacterDisplay
+    // shakeElement is now shake() in CharacterDisplay
+    // updateHpDisplay is now updateHpDisplay() in CharacterDisplay
 
     endBattle() {
         if (this.isBattleOver) return; // Prevent multiple calls
