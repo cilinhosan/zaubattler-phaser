@@ -1,17 +1,23 @@
 import Phaser from "phaser";
-import Character from "./game/Character";
+// import Character from "./game/Character"; // Removed unused import
 import battlesData from './game/battles.json'; // Import battle data
 import CharacterDisplay from './game/CharacterDisplay'; // Import CharacterDisplay class
+// import { ActiveSkill } from "./game/Skill"; // Removed unused import
 
 const MAX_SLOTS = 5; // Define max slots per team
 
 class BattleScene extends Phaser.Scene {
     constructor() {
         super({key: "BattleScene"});
+        this.characters = []; // Unified array of characters currently active in battle
+        this.allBattleCharacters = []; // Array of all characters initially in battle (including defeated)
+        this.activeCharacterIndex = 0; // Index of the character whose turn it is in the 'characters' array
+        this.currentActiveCharacter = null; // Store the character whose turn it currently is
     }
 
     preload() {
         // Preload assets if needed
+        // Load skill icons here based on SkillDefinitions
     }
 
     create(data) {
@@ -21,188 +27,224 @@ class BattleScene extends Phaser.Scene {
         // Receive team data and battle index from PreBattleSetupScene
         this.playerTeam = data.playerTeam;
         this.enemyTeam = data.enemyTeam;
-        this.battleIndex = data.battleIndex; // Store the current battle index
+        this.battleIndex = data.battleIndex;
 
-        // Create CharacterDisplay instances for player team
-        this.playerDisplays = this.playerTeam.map((char, index) => {
-            // Ensure maxHp is set before creating display
-            char.maxHp = char.maxHp || char.hp;
-            const display = new CharacterDisplay(this, char, 'player', index);
-            // Store display reference on character for easy lookup (optional, but can be helpful)
-            char.display = display;
-            return display;
-        });
+        // Create a combined array of all characters for this battle instance
+        this.allBattleCharacters = [...this.playerTeam, ...this.enemyTeam];
 
-        // Create CharacterDisplay instances for enemy team
-        this.enemyDisplays = this.enemyTeam.map((char, index) => {
-            // Ensure maxHp is set before creating display
-            char.maxHp = char.maxHp || char.hp;
-            const display = new CharacterDisplay(this, char, 'enemy', index);
-            // Store display reference on character
+        // Initialize the 'characters' array with only active characters for turn order
+        this.characters = this.allBattleCharacters.filter(char => !char.isDefeated);
+
+
+        // Create CharacterDisplay instances for all characters initially in the battle
+        this.characterDisplays = this.allBattleCharacters.map((char, index) => {
+            const teamIndex = char.team === 'player' ? this.playerTeam.indexOf(char) : this.enemyTeam.indexOf(char);
+            const display = new CharacterDisplay(this, char, char.team, teamIndex);
             char.display = display;
+            if (char.isDefeated) {
+                 display.hide();
+            }
             return display;
         });
 
         // Battle state variables
-        this.currentTurn = 'player'; // 'player' or 'enemy'
         this.isBattleOver = false;
         this.turnCounter = 0;
+        this.activeCharacterIndex = 0; // Start with the first character in the active 'characters' array
+        this.currentActiveCharacter = null;
 
         // Display turn counter
-        // Adjusted font size and removed scaling
-        this.turnText = this.add.text(this.cameras.main.width / 2, 80, `Turn: ${this.turnCounter}`, { fontSize: '100px', fill: '#fff' }).setOrigin(0.5); // Increased font size and moved down slightly
+        this.turnText = this.add.text(this.cameras.main.width / 2, 80, `Turn: ${this.turnCounter}`, { fontSize: '100px', fill: '#fff' }).setOrigin(0.5);
 
         // Start the battle
-        this.time.delayedCall(1000, this.startTurn, [], this); // Delay start for readability
+        this.time.delayedCall(1000, this.startTurn, [], this);
     }
 
     startTurn() {
         if (this.isBattleOver) return;
 
-        // Check for battle end conditions before starting the turn
-        if (this.playerTeam.length === 0 || this.enemyTeam.length === 0) {
+        // Check for battle end conditions first
+        const allPlayerDefeated = this.playerTeam.every(char => char.isDefeated);
+        const allEnemyDefeated = this.enemyTeam.every(char => char.isDefeated);
+        if (allPlayerDefeated || allEnemyDefeated) {
             this.endBattle();
             return;
         }
 
-        if (this.currentTurn === 'player') {
-            this.playerAttack();
+        // Ensure the active characters list is up-to-date (should be correct from previous endTurn)
+        if (this.characters.length === 0) {
+            console.error("No active characters left at start of turn, ending battle.");
+            this.endBattle();
+            return;
+        }
+
+        // Validate and adjust activeCharacterIndex (should point to the correct next character)
+        this.activeCharacterIndex = this.activeCharacterIndex % this.characters.length;
+
+        // Get the character for the current turn
+        this.currentActiveCharacter = this.characters[this.activeCharacterIndex];
+
+        // Safeguard against unexpected state
+        if (!this.currentActiveCharacter || this.currentActiveCharacter.isDefeated) {
+            console.error(`Error: Attempting to start turn for invalid character at index ${this.activeCharacterIndex}. Trying to recover.`);
+            // Force recalculation and try to advance
+            this.updateActiveCharactersAndVisuals(); // Update the list
+            this.advanceTurn(); // Try to move to the next turn
+            return;
+        }
+
+
+        console.log(`--- Turn ${this.turnCounter + 1}: ${this.currentActiveCharacter.name}'s turn (${this.currentActiveCharacter.team}) ---`);
+
+        // 1. Highlight green at start of turn
+        if (this.currentActiveCharacter.display) {
+            this.currentActiveCharacter.display.highlightBorder(0x00ff00); // Green highlight for active
+        }
+
+        // Call onTurnStart for the active character (handles cooldowns and status effects)
+        this.currentActiveCharacter.onTurnStart();
+
+        // Determine potential target and caster teams
+        const targetTeam = this.currentActiveCharacter.team === 'player'
+            ? this.enemyTeam.filter(char => !char.isDefeated)
+            : this.playerTeam.filter(char => !char.isDefeated);
+        const casterTeam = this.currentActiveCharacter.team === 'player'
+            ? this.playerTeam.filter(char => !char.isDefeated)
+            : this.enemyTeam.filter(char => !char.isDefeated);
+
+        // 2. Determine the action the character will take
+        const chosenAction = this.currentActiveCharacter.determineAction(targetTeam, casterTeam); // Pass both teams
+
+        // 3. Change highlight based on determined action (BEFORE delay)
+        if (chosenAction && this.currentActiveCharacter.display) {
+            const highlightColor = chosenAction.name === "Basic Attack" ? 0xffa500 : 0x0000ff; // Orange for basic, Blue for skill
+            this.currentActiveCharacter.display.highlightBorder(highlightColor);
+        } else if (!chosenAction) {
+             console.log(`${this.currentActiveCharacter.name} could not determine an action.`);
+             // If no action, maybe clear highlight or leave green? Let's leave green for now.
+        }
+
+        // 4. Execute the chosen action after a delay
+        this.time.delayedCall(800, () => {
+            // Ensure the character hasn't been defeated between startTurn and action execution
+            if (!this.currentActiveCharacter || this.currentActiveCharacter.isDefeated) {
+                console.log(`${this.currentActiveCharacter?.name || 'Character'} was defeated before acting or is invalid.`);
+                // Update state and visuals, then advance
+                this.updateActiveCharactersAndVisuals();
+                this.advanceTurn();
+                return;
+            }
+
+            // Execute the determined action
+            if (chosenAction && typeof chosenAction.execute === 'function') {
+                 // Re-check if targets still exist (could be defeated by effects between turns)
+                 const currentTargetTeam = this.currentActiveCharacter.team === 'player'
+                     ? this.enemyTeam.filter(char => !char.isDefeated)
+                     : this.playerTeam.filter(char => !char.isDefeated);
+                 const currentCasterTeam = this.currentActiveCharacter.team === 'player'
+                     ? this.playerTeam.filter(char => !char.isDefeated)
+                     : this.enemyTeam.filter(char => !char.isDefeated); // Recalculate caster team too just in case
+
+                 if (currentTargetTeam.length > 0) {
+                      console.log(`Executing action: ${chosenAction.name} for ${this.currentActiveCharacter.name}`);
+
+                      // Highlight change is now done *before* the delay
+
+                      // Pass potentially updated teams to the action's execute method
+                      // Note: The skill's internal effectFn might use the teams passed during getAction,
+                      // or it might need the most current teams passed here. Adjust Skill.js if needed.
+                      chosenAction.execute(currentTargetTeam, currentCasterTeam);
+                 } else {
+                      console.log(`${this.currentActiveCharacter.name} determined action ${chosenAction.name}, but no valid targets remain.`);
+                 }
+            } else {
+                 console.error(`${this.currentActiveCharacter.name} failed to determine a valid action.`);
+                 // Consider if a default action (like basic attack) should happen here as a fallback
+            }
+
+
+            // Update the active character list and handle visuals immediately after action
+            this.updateActiveCharactersAndVisuals();
+
+            // Call onTurnEnd for the character
+            this.currentActiveCharacter.onTurnEnd();
+
+            // Advance to the next turn
+            this.advanceTurn();
+
+        }, [], this);
+    }
+
+    // Updates the active character list and handles visuals for defeated characters
+    updateActiveCharactersAndVisuals() {
+        // Store the currently active character before filtering
+        const previousActiveCharacter = this.currentActiveCharacter;
+        const previousLength = this.characters.length;
+
+        // Update the main 'characters' array to only include non-defeated characters
+        this.characters = this.allBattleCharacters.filter(char => !char.isDefeated);
+
+        // Destroy displays of newly defeated characters
+        this.allBattleCharacters.forEach(char => {
+            if (char.isDefeated && char.display && !char.display.isDestroyed) {
+                char.display.destroy();
+            }
+        });
+
+        // If the list length changed, we need to find the correct index for the *next* turn
+        if (this.characters.length < previousLength && previousActiveCharacter) {
+            // Find the index of the character *after* the one who just acted in the new list
+            const lastActorIndexInNewList = this.characters.indexOf(previousActiveCharacter);
+
+            if (lastActorIndexInNewList !== -1) {
+                // If the actor is still in the list (wasn't defeated by their own action),
+                // the next index is the one after them.
+                this.activeCharacterIndex = (lastActorIndexInNewList + 1) % this.characters.length;
+            } else {
+                // If the actor *was* defeated, the index might already be pointing correctly
+                // due to the filtering, but we need to ensure it's valid.
+                this.activeCharacterIndex = this.activeCharacterIndex % this.characters.length;
+            }
+        } else if (this.characters.length > 0) {
+             // If length didn't change, simply prepare the index for the next turn
+             this.activeCharacterIndex = (this.activeCharacterIndex + 1) % this.characters.length;
         } else {
-            this.enemyAttack();
+             // If no characters are left active
+             this.activeCharacterIndex = 0;
         }
+
+         // Ensure index is valid if list became empty
+         if (this.characters.length === 0) {
+             this.activeCharacterIndex = 0;
+         }
     }
 
-    playerAttack() {
-        // Select a random active player character
-        const attackerIndex = Math.floor(Math.random() * this.playerTeam.length);
-        const attacker = this.playerTeam[attackerIndex];
-        const attackerDisplay = this.playerDisplays[attackerIndex]; // Get corresponding display
-
-        // Select a random active enemy character
-        const targetIndex = Math.floor(Math.random() * this.enemyTeam.length);
-        const target = this.enemyTeam[targetIndex];
-        const targetDisplay = this.enemyDisplays[targetIndex]; // Get corresponding display
-
-        // Check if attacker and target displays are valid
-        if (!attackerDisplay || !targetDisplay) {
-             console.warn("Attacker or target display not found, skipping turn.");
-             this.endTurn('enemy'); // Skip to next turn
-             return;
+    // Handles the logic after a character's action is complete and state is updated
+    advanceTurn() {
+        // Remove highlight from the character who just finished their turn
+        if (this.currentActiveCharacter && this.currentActiveCharacter.display && !this.currentActiveCharacter.display.isDestroyed) {
+             this.currentActiveCharacter.display.clearHighlight();
         }
 
-        // Visual feedback for attack
-        const yellowHighlight = this.add.graphics();
-        yellowHighlight.lineStyle(4, 0xffff00, 1);
-        // Use display properties for position and size
-        yellowHighlight.strokeRect(attackerDisplay.graphics.x, attackerDisplay.graphics.y, attackerDisplay.rectWidth, attackerDisplay.rectHeight);
-        const attackIndicator = this.drawAttackIndicator(attackerDisplay, targetDisplay); // Pass displays
+        // Check for end conditions *after* updating the active list
+        const allPlayerDefeated = this.playerTeam.every(char => char.isDefeated);
+        const allEnemyDefeated = this.enemyTeam.every(char => char.isDefeated);
 
-        // Shake target using its display method
-        targetDisplay.shake();
-
-        // Calculate damage (simple attack - defense)
-        const damage = Math.max(0, attacker.atk - target.def);
-        target.hp -= damage;
-        target.hp = Math.max(0, target.hp); // Ensure HP doesn't go below 0
-
-        console.log(`Player ${attacker.name} attacks Enemy ${target.name || target.type} for ${damage} damage. Enemy HP: ${target.hp}`);
-
-        // Update HP bar and text for the target using its display method
-        targetDisplay.updateHpDisplay();
-
-        // Remove defeated enemy
-        if (target.hp <= 0) {
-            console.log(`Enemy ${target.name || target.type} defeated!`);
-            targetDisplay.destroy(); // Destroy display elements
-            // Remove from arrays
-            this.enemyTeam.splice(targetIndex, 1);
-            this.enemyDisplays.splice(targetIndex, 1);
-
-            // Re-index remaining displays if necessary (or handle lookup differently)
-            // For simplicity, we might skip re-indexing if lookup uses character reference
-        }
-
-        // Revert visual changes and switch turn after a delay
-        this.time.delayedCall(800, () => {
-            attackIndicator.destroy();
-            yellowHighlight.destroy();
-            // Border color reset is handled by shake() in CharacterDisplay
-            this.endTurn('enemy'); // Use helper to switch turn
-        }, [], this);
-    }
-
-    enemyAttack() {
-        // Select a random active enemy character
-        const attackerIndex = Math.floor(Math.random() * this.enemyTeam.length);
-        const attacker = this.enemyTeam[attackerIndex];
-        const attackerDisplay = this.enemyDisplays[attackerIndex]; // Get corresponding display
-
-        // Select a random active player character
-        const targetIndex = Math.floor(Math.random() * this.playerTeam.length);
-        const target = this.playerTeam[targetIndex];
-        const targetDisplay = this.playerDisplays[targetIndex]; // Get corresponding display
-
-        // Check if attacker and target displays are valid
-        if (!attackerDisplay || !targetDisplay) {
-             console.warn("Attacker or target display not found, skipping turn.");
-             this.endTurn('player'); // Skip to next turn
-             return;
-        }
-
-        // Visual feedback for attack
-        const yellowHighlight = this.add.graphics();
-        yellowHighlight.lineStyle(4, 0xffff00, 1);
-        // Use display properties for position and size
-        yellowHighlight.strokeRect(attackerDisplay.graphics.x, attackerDisplay.graphics.y, attackerDisplay.rectWidth, attackerDisplay.rectHeight);
-        const attackIndicator = this.drawAttackIndicator(attackerDisplay, targetDisplay); // Pass displays
-
-        // Shake target using its display method
-        targetDisplay.shake();
-
-        // Calculate damage
-        const damage = Math.max(0, attacker.atk - target.def);
-        target.hp -= damage;
-        target.hp = Math.max(0, target.hp); // Ensure HP doesn't go below 0
-
-        console.log(`Enemy ${attacker.name || attacker.type} attacks Player ${target.name} for ${damage} damage. Player HP: ${target.hp}`);
-
-        // Update HP bar and text for the target using its display method
-        targetDisplay.updateHpDisplay();
-
-        // Remove defeated player
-        if (target.hp <= 0) {
-            console.log(`Player ${target.name} defeated!`);
-            targetDisplay.destroy(); // Destroy display elements
-            // Remove from arrays
-            this.playerTeam.splice(targetIndex, 1);
-            this.playerDisplays.splice(targetIndex, 1);
-
-             // Re-index remaining displays if necessary
-        }
-
-        // Revert visual changes and switch turn after a delay
-        this.time.delayedCall(800, () => {
-            attackIndicator.destroy();
-            yellowHighlight.destroy();
-            // Border color reset is handled by shake() in CharacterDisplay
-            this.endTurn('player'); // Use helper to switch turn
-        }, [], this);
-    }
-
-    // Helper function to switch turns and start the next one
-    endTurn(nextTurn) {
-        this.currentTurn = nextTurn;
-        if (nextTurn === 'player') { // Only increment turn counter when it becomes player's turn
-             this.turnCounter++;
-             this.turnText.setText(`Turn: ${this.turnCounter}`);
-        }
-        // Check for end conditions *before* starting the next turn delay
-        if (this.playerTeam.length === 0 || this.enemyTeam.length === 0) {
+        if (allPlayerDefeated || allEnemyDefeated) {
             this.endBattle();
         } else {
-            this.time.delayedCall(800, this.startTurn, [], this); // Start next turn
+             // Increment turn counter when index wraps back to 0 (start of a new round)
+             if (this.activeCharacterIndex === 0) {
+                 this.turnCounter++;
+                 this.turnText.setText(`Turn: ${this.turnCounter}`);
+             }
+
+            // Start the next turn after a delay
+            // The activeCharacterIndex is now correctly pointing to the next character
+            this.time.delayedCall(800, this.startTurn, [], this);
         }
     }
+
 
     // Updated to use CharacterDisplay instances
     drawAttackIndicator(attackerDisplay, targetDisplay) {
@@ -219,19 +261,13 @@ class BattleScene extends Phaser.Scene {
         return line;
     }
 
-    // highlightBorder is now part of CharacterDisplay
-    // shakeElement is now shake() in CharacterDisplay
-    // updateHpDisplay is now updateHpDisplay() in CharacterDisplay
-
     endBattle() {
         if (this.isBattleOver) return; // Prevent multiple calls
         this.isBattleOver = true;
         console.log("Battle Over!");
 
-        let outcome = 'lose'; // Default to lose
-        if (this.enemyTeam.length === 0) {
-            outcome = 'win';
-        }
+        const allPlayerDefeated = this.playerTeam.every(char => char.isDefeated);
+        let outcome = allPlayerDefeated ? 'lose' : 'win'; // Determine outcome based on who is defeated
 
         // --- Battle Progression Logic ---
         if (outcome === 'win') {
@@ -240,26 +276,30 @@ class BattleScene extends Phaser.Scene {
                 // Proceed to the next battle
                 console.log(`Proceeding to Battle ${nextBattleIndex + 1}`);
                 this.time.delayedCall(1500, () => {
-                    // --- Reset Player HP before next battle ---
-                    console.log("Resetting player team HP...");
+                    // --- Reset Player HP and Combat Stats before next battle ---
+                    console.log("Resetting player team combat stats...");
                     this.playerTeam.forEach(char => {
-                        if (char.maxHp) {
-                            char.hp = char.maxHp; // Reset HP to max
+                        if (char && typeof char.resetForBattle === 'function') {
+                            char.resetForBattle(); // Use the new method name
                         } else {
-                            // Fallback or warning if maxHp isn't set
-                            console.warn(`Character ${char.name} missing maxHp. Cannot reset HP properly.`);
-                            // You might need a more robust way to get original HP if maxHp isn't reliable
+                            console.warn("Attempted to reset invalid character in player team:", char);
                         }
+                        // Display objects are destroyed, they need to be recreated in the next scene
                     });
                     // --- End Reset Player HP ---
 
-                    // Pass the player team (now with reset HP) and the next index
+                    // Pass the original playerTeam (with reset stats) and the next index
                     this.scene.start('PreBattleSetupScene', { playerTeam: this.playerTeam, battleIndex: nextBattleIndex });
                 }, [], this);
             } else {
                 // All battles completed
                 console.log("All battles won!");
                 this.time.delayedCall(1500, () => {
+                     this.playerTeam.forEach(char => {
+                         if (char && typeof char.resetForBattle === 'function') {
+                             char.resetForBattle(); // Use the new method name
+                         }
+                     });
                     this.scene.start('EndGameScene', { outcome: 'win' }); // Go to End Game Scene (Win)
                 }, [], this);
             }
@@ -267,6 +307,12 @@ class BattleScene extends Phaser.Scene {
             // Player lost
             console.log("Player lost the battle.");
             this.time.delayedCall(1500, () => {
+                // Reset player team stats even on loss before going to end game scene
+                 this.playerTeam.forEach(char => {
+                     if (char && typeof char.resetForBattle === 'function') {
+                         char.resetForBattle(); // Use the new method name
+                     }
+                 });
                 this.scene.start('EndGameScene', { outcome: 'lose' }); // Go to End Game Scene (Lose)
             }, [], this);
         }
@@ -274,11 +320,7 @@ class BattleScene extends Phaser.Scene {
     }
 
     update() {
-        // Check for battle end conditions continuously in update might be redundant
-        // if startTurn already handles it, but can be a failsafe.
-        // if (!this.isBattleOver && (this.playerTeam.length === 0 || this.enemyTeam.length === 0)) {
-        //     this.endBattle();
-        // }
+        // Update logic if needed
     }
 }
 

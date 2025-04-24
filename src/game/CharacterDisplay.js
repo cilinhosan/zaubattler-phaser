@@ -52,8 +52,10 @@ class CharacterDisplay {
         this.hpBar.fillStyle(0x00ff00, 1); // Green color for HP
         this.hpBar.fillRect(this.rectX, this.rectY + this.rectHeight + HP_BAR_Y_OFFSET, this.rectWidth, HP_BAR_HEIGHT);
 
-        // HP text
-        this.hpText = this.scene.add.text(this.rectX + this.rectWidth / 2, this.rectY + this.rectHeight + HP_BAR_Y_OFFSET + HP_BAR_HEIGHT / 2, `${this.character.hp}/${this.character.maxHp}`, {
+        // HP text - Use getter methods
+        const initialHp = typeof this.character.getCurrentHp === 'function' ? this.character.getCurrentHp() : '?';
+        const initialMaxHp = typeof this.character.getMaxHp === 'function' ? this.character.getMaxHp() : '?';
+        this.hpText = this.scene.add.text(this.rectX + this.rectWidth / 2, this.rectY + this.rectHeight + HP_BAR_Y_OFFSET + HP_BAR_HEIGHT / 2, `${initialHp}/${initialMaxHp}`, {
             fontSize: '24px',
             fill: '#fff'
         })
@@ -71,16 +73,26 @@ class CharacterDisplay {
     }
 
     updateHpDisplay() {
-        if (!this.graphics || this.graphics.isDestroyed) return; // Check if display is destroyed
+        // Add checks for isDestroyed flag and validity of hpBar/hpText
+        if (this.isDestroyed || !this.graphics || this.graphics.destroyed || !this.hpBar || this.hpBar.destroyed || !this.hpText || !this.hpText.scene) {
+             // console.warn("updateHpDisplay called on destroyed or invalid display for:", this.character?.name);
+             return;
+        }
+        if (typeof this.character.getCurrentHp !== 'function' || typeof this.character.getMaxHp !== 'function') {
+             console.warn("Character object missing HP methods for:", this.character?.name);
+             return;
+        }
 
-        const hpPercentage = Math.max(0, this.character.hp / this.character.maxHp);
+        const currentHp = this.character.getCurrentHp();
+        const maxHp = this.character.getMaxHp();
+        const hpPercentage = maxHp > 0 ? Math.max(0, currentHp / maxHp) : 0; // Avoid division by zero
         const hpBarWidth = this.rectWidth * hpPercentage;
 
         this.hpBar.clear();
         this.hpBar.fillStyle(0x00ff00, 1);
         this.hpBar.fillRect(this.rectX, this.rectY + this.rectHeight + HP_BAR_Y_OFFSET, hpBarWidth, HP_BAR_HEIGHT);
 
-        this.hpText.setText(`${this.character.hp}/${this.character.maxHp}`);
+        this.hpText.setText(`${currentHp}/${maxHp}`);
         this.hpText.setPosition(this.rectX + this.rectWidth / 2, this.rectY + this.rectHeight + HP_BAR_Y_OFFSET + HP_BAR_HEIGHT / 2);
     }
 
@@ -93,7 +105,7 @@ class CharacterDisplay {
         const borderThickness = 2;
 
         // Change border to red immediately
-        this.highlightBorder(this.graphics, 0, 0, this.rectWidth, this.rectHeight, hitBorderColor, borderThickness);
+        this.highlightBorder(hitBorderColor, borderThickness); // Call with correct parameters
 
         this.scene.tweens.add({
             targets: this.graphics,
@@ -103,10 +115,11 @@ class CharacterDisplay {
             repeat: 3,
             yoyo: true,
             onComplete: () => {
+                // Reset position and border color after shake
                 if (this.graphics && !this.graphics.isDestroyed) {
                     this.graphics.x = originalGraphicsX;
-                    // Change border back to original color
-                    this.highlightBorder(this.graphics, 0, 0, this.rectWidth, this.rectHeight, originalBorderColor, borderThickness);
+                    // Put back the border reset to default white
+                    this.highlightBorder(originalBorderColor, borderThickness);
                 }
             }
         });
@@ -129,18 +142,68 @@ class CharacterDisplay {
         }
     }
 
-    highlightBorder(graphics, rectX, rectY, rectWidth, rectHeight, color, thickness) {
-        if (!graphics || graphics.isDestroyed) return;
-        graphics.clear();
-        graphics.lineStyle(thickness, color, 1);
-        graphics.strokeRect(0, 0, rectWidth, rectHeight);
+    // Modified highlightBorder to operate on this.graphics
+    highlightBorder(color, thickness = 2) {
+        if (!this.graphics || this.graphics.isDestroyed) return;
+        this.graphics.clear();
+        this.graphics.lineStyle(thickness, color, 1);
+        this.graphics.strokeRect(0, 0, this.rectWidth, this.rectHeight);
     }
+
+    // New method to clear the highlight and revert to default border
+    clearHighlight() {
+        this.highlightBorder(0xffffff, 2); // Revert to default white border with thickness 2
+    }
+
+    // New method to hide display elements
+    hide() {
+        if (this.graphics && !this.graphics.isDestroyed) this.graphics.setVisible(false);
+        if (this.text && this.text.scene) this.text.setVisible(false);
+        if (this.hpBar && !this.hpBar.isDestroyed) this.hpBar.setVisible(false);
+        if (this.hpText && this.hpText.scene) this.hpText.setVisible(false);
+    }
+
+    // New method to show display elements
+    show() {
+        if (this.graphics && !this.graphics.isDestroyed) this.graphics.setVisible(true);
+        if (this.text && this.text.scene) this.text.setVisible(true);
+        if (this.hpBar && !this.hpBar.isDestroyed) this.hpBar.setVisible(true);
+        if (this.hpText && this.hpText.scene) this.hpText.setVisible(true);
+    }
+
 
     destroy() {
         if (this.graphics && !this.graphics.isDestroyed) this.graphics.destroy();
         if (this.text && this.text.scene) this.text.destroy();
         if (this.hpBar && !this.hpBar.isDestroyed) this.hpBar.destroy();
         if (this.hpText && this.hpText.scene) this.hpText.destroy();
+        this.isDestroyed = true; // Add a flag to prevent errors after destruction
+    }
+
+    // Method to reset the display state (e.g., after being defeated or for a new battle)
+    resetDisplay() {
+        if (this.isDestroyed) return; // Don't reset if already destroyed
+
+        // Make elements visible again (in case they were hidden by defeat)
+        this.show();
+
+        // Reset border highlight to default
+        this.clearHighlight();
+
+        // Update HP display to reflect potentially reset character stats
+        this.updateHpDisplay();
+    }
+
+    // Add showDefeated method (called from BattleCharacter)
+    showDefeated() {
+        if (this.isDestroyed) return;
+        // Example: Make the display semi-transparent or apply a grayscale filter
+        if (this.graphics) this.graphics.setAlpha(0.5);
+        if (this.text) this.text.setAlpha(0.5);
+        if (this.hpBar) this.hpBar.setAlpha(0.5);
+        if (this.hpText) this.hpText.setAlpha(0.5);
+        // Optionally hide completely after an animation
+        // this.hide();
     }
 }
 

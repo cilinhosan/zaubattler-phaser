@@ -1,6 +1,6 @@
 import Phaser from "phaser";
-import Character from "./game/Character"; // Import Character class
-import createCharacterPool from "./game/characterPool"; // Import the function
+// Removed import for old Character class
+import { getRandomCharacters } from "./game/starterCharacterPool.js"; // Import the new function
 
 class MenuScreenScene extends Phaser.Scene {
     constructor() {
@@ -36,27 +36,19 @@ class MenuScreenScene extends Phaser.Scene {
         // Make play text interactive
         playText.setInteractive();
         playText.on('pointerdown', () => {
-            // Select 2 random characters from the pool for the player team
-            const playerTeam = [];
-            const freshCharacterPool = createCharacterPool(); // Get a fresh pool
-            const poolCopy = [...freshCharacterPool]; // Create a copy to avoid modifying the new pool
+            // Get 2 random MenuCharacters for the player's starting team
+            const playerTeam = getRandomCharacters(2);
 
-            for (let i = 0; i < 2; i++) {
-                if (poolCopy.length > 0) {
-                    const randomIndex = Math.floor(Math.random() * poolCopy.length);
-                    playerTeam.push(poolCopy.splice(randomIndex, 1)[0]); // Remove and add character
-                }
+            if (playerTeam.length < 2) {
+                 console.warn("Could not retrieve 2 characters from the pool. Check pool size and definitions.");
+                 // LLM TODO: Handle this case - show error to user? Prevent starting?
+                 // For now, proceed even if the team is smaller than expected.
             }
 
-            // Create enemy team (1 character - Wolf)
-            // Assuming Wolf is always the first enemy for now based on previous instruction
-            // const enemyTeam = [
-            //      new Character("Wolf", { hp: 500, atk: 100, def: 70 }, "Fire", {}) // Using base stats and a default element for Wolf
-            // ];
+            // The commented-out enemy team creation is removed as PreBattleSetupScene handles it.
 
-
-            // Pass player team to PreBattleSetupScene. PreBattleSetupScene will load the first battle's enemies.
-            this.scene.start('PreBattleSetupScene', { playerTeam }); // Removed enemyTeam here
+            // Pass the selected player team (array of MenuCharacter instances) to PreBattleSetupScene.
+            this.scene.start('PreBattleSetupScene', { playerTeam });
         });
     }
 }
