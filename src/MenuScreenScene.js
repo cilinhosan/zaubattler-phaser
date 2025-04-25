@@ -41,7 +41,7 @@ class MenuScreenScene extends Phaser.Scene {
 
             if (playerTeam.length < 2) {
                  console.warn("Could not retrieve 2 characters from the pool. Check pool size and definitions.");
-                 // LLM TODO: Handle this case - show error to user? Prevent starting?
+                 // Handle this case - show error to user? Prevent starting?
                  // For now, proceed even if the team is smaller than expected.
             }
 

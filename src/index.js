@@ -19,6 +19,6 @@ const config = {
             debug: false
         }
     },
-    scene: [MenuScreenScene, PreBattleSetupScene, BattleScene, EndGameScene] // Add EndGameScene here
+    scene: [MenuScreenScene, PreBattleSetupScene, BattleScene, EndGameScene]
 };
 const game = new Phaser.Game(config);

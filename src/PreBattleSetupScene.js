@@ -2,9 +2,8 @@ import Phaser from 'phaser';
 import battlesData from './game/battles.json'; // Import battle data
 import BattleCharacter from './game/BattleCharacter.js'; // Use BattleCharacter for enemies in this scene
 import { getCharacterDefinition } from './CharacterDefinitionList.js'; // Corrected import path
-// LLM TODO: Check if MenuCharacter is needed here if playerTeam needs inspection/display beyond base stats
+// TODO: Check if MenuCharacter is needed here if playerTeam needs inspection/display beyond base stats
 // import MenuCharacter from './game/MenuCharacter.js';
-// LLM TODO: Remove skill imports if not used directly here anymore
 // import { fireBlastSkill, atkBoostPassive } from './game/SkillDefinitions.js'; // Removed unused skill imports
 
 
@@ -50,7 +49,7 @@ class PreBattleSetupScene extends Phaser.Scene {
 
             if (!definition) {
                 console.error(`Character definition not found for enemy type: ${enemyConfig.type}. Skipping enemy.`);
-                // LLM TODO: Consider adding a placeholder 'Unknown Enemy' BattleCharacter
+                // Consider adding a placeholder 'Unknown Enemy' BattleCharacter
                 return null; // Skip this enemy if definition is missing
             }
 
@@ -60,7 +59,7 @@ class PreBattleSetupScene extends Phaser.Scene {
             const battleCharacter = new BattleCharacter(definitionId, 1, 'enemy'); // Level 1, enemy team
             console.log(`Created BattleCharacter: ${battleCharacter.getName()}`);
 
-            // LLM TODO: Potentially assign unique IDs or modify names if needed (e.g., "Goblin A", "Goblin B")
+            // TODO: Potentially assign unique IDs or modify names if needed (e.g., "Goblin A", "Goblin B")
             // battleCharacter.name = `${definition.name} ${index + 1}`; // Example: Rename to Goblin 1, Goblin 2
 
             return battleCharacter;
@@ -132,7 +131,7 @@ class PreBattleSetupScene extends Phaser.Scene {
             const playerBattleTeam = playerTeam.map(charData => {
                 if (!charData || !charData.definitionId) {
                      console.error("Invalid character data in playerTeam:", charData);
-                     // LLM TODO: Handle this case - skip character, use default, or throw error?
+                     // Handle this case - skip character, use default, or throw error?
                      return null; // Skip invalid character data
                 }
                 // Create a new BattleCharacter for the battle
@@ -141,7 +140,7 @@ class PreBattleSetupScene extends Phaser.Scene {
 
             if (playerBattleTeam.length === 0) {
                 console.error("Player team is empty or invalid after conversion. Cannot start battle.");
-                // LLM TODO: Show an error message to the player?
+                // Show an error message to the player?
                 return;
             }
 

@@ -203,24 +203,55 @@ export class BattleCharacter extends BaseCharacter {
                  // Check if the skill method exists on the definition
                  if (typeof this.definition[methodName] === 'function') {
                      console.log(`${this.name} considers using skill: ${metadata.name}`);
-                     // Create the action object
+                     const currentTargetType = metadata.targetType || 'enemy'; // Get target type
+
+                     // --- Target Validation ---
+                     let hasValidTargets = false;
+                     const livingTargetTeam = targetTeam.filter(t => t && !t.isDefeatedStatus());
+                     const livingOwnTeam = ownTeam.filter(t => t && !t.isDefeatedStatus());
+
+                     switch (currentTargetType) {
+                         case 'enemy':
+                         case 'allEnemies':
+                             hasValidTargets = livingTargetTeam.length > 0;
+                             break;
+                         case 'ally':
+                         case 'allAllies':
+                             // Assumes 'ally' skills can target self if caster is in ownTeam.
+                             // Specific skill logic might need refinement (e.g., cannot heal self).
+                             hasValidTargets = livingOwnTeam.length > 0;
+                             break;
+                         case 'self':
+                         case 'none': // Skills with no target are always valid if caster is alive
+                             hasValidTargets = true; // Caster is alive check happens at method start
+                             break;
+                         default:
+                             console.warn(`Unknown target type: ${currentTargetType} for skill ${metadata.name}. Assuming requires enemy.`);
+                             hasValidTargets = livingTargetTeam.length > 0;
+                     }
+
+                     if (!hasValidTargets) {
+                         console.log(`${this.name} cannot use ${metadata.name}: No valid targets.`);
+                         continue; // Skip to the next skill in the loop
+                     }
+                     // --- End Target Validation ---
+
+                     // Create the action object (only if validation passed)
                      const action = {
                          name: metadata.name,
                          caster: this,
-                         targetType: metadata.targetType || 'enemy', // Default target type
+                         targetType: currentTargetType,
                          execute: () => {
                              console.log(`${this.name} executes skill: ${metadata.name}`);
                              // Call the skill method from the definition instance
-                             this.definition[methodName](this, targetTeam, ownTeam);
+                             // Pass the potentially filtered living teams, although the skill might re-filter anyway
+                             this.definition[methodName](this, livingTargetTeam, livingOwnTeam);
                              // Set cooldown
                              this.skillCooldowns[methodName] = metadata.cooldown || 0;
                              console.log(`${metadata.name} cooldown set to ${this.skillCooldowns[methodName]}`);
                          }
                      };
-                     // TODO: Add pre-execution target validation based on metadata.targetType
-                     // e.g., check if valid targets exist before returning the action.
-                     // For now, assume the skill method handles invalid targets.
-                     return action;
+                     return action; // Return the validated action
                  } else {
                       console.warn(`Skill method ${methodName} not found on definition for ${this.name}`);
                  }
@@ -233,8 +264,17 @@ export class BattleCharacter extends BaseCharacter {
         if (livingTargets.length > 0) {
             return basicAttackAction;
         } else {
-            console.log(`${this.name} cannot perform Basic Attack, no living targets.`);
-            return null; // No action possible
+            console.log(`${this.name} cannot perform Basic Attack or any skill, passing turn.`);
+            // Return a "Pass" action instead of null
+            return {
+                name: "Pass",
+                caster: this,
+                targetType: 'none', // Indicates no target interaction
+                execute: () => {
+                    console.log(`${this.name} passes their turn.`);
+                    // No actual game effect for passing
+                }
+            };
         }
     }
 

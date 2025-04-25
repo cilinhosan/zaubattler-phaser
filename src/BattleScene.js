@@ -1,8 +1,6 @@
 import Phaser from "phaser";
-// import Character from "./game/Character"; // Removed unused import
 import battlesData from './game/battles.json'; // Import battle data
 import CharacterDisplay from './game/CharacterDisplay'; // Import CharacterDisplay class
-// import { ActiveSkill } from "./game/Skill"; // Removed unused import
 
 const MAX_SLOTS = 5; // Define max slots per team
 
@@ -32,24 +30,27 @@ class BattleScene extends Phaser.Scene {
         // Create a combined array of all characters for this battle instance
         this.allBattleCharacters = [...this.playerTeam, ...this.enemyTeam];
 
+
+        // dev_comment: Is this even necessary? create function shouldn't really accept defeated characters to begin with
         // Initialize the 'characters' array with only active characters for turn order
         this.characters = this.allBattleCharacters.filter(char => !char.isDefeated);
 
-
         // Create CharacterDisplay instances for all characters initially in the battle
-        this.characterDisplays = this.allBattleCharacters.map((char, index) => {
+        this.characterDisplays = []; // Initialize an empty array
+        for (const char of this.allBattleCharacters) {
+            // Determine the index within the specific team array
             const teamIndex = char.team === 'player' ? this.playerTeam.indexOf(char) : this.enemyTeam.indexOf(char);
             const display = new CharacterDisplay(this, char, char.team, teamIndex);
-            char.display = display;
+            char.display = display; // Assign the display back to the character
             if (char.isDefeated) {
-                 display.hide();
+                 display.hide(); // Hide if defeated
             }
-            return display;
-        });
+            this.characterDisplays.push(display); // Add the created display to the array
+        }
 
         // Battle state variables
         this.isBattleOver = false;
-        this.turnCounter = 0;
+        this.turnCounter = 1; //dev_comment: changed to start at turn 1
         this.activeCharacterIndex = 0; // Start with the first character in the active 'characters' array
         this.currentActiveCharacter = null;
 
@@ -64,16 +65,17 @@ class BattleScene extends Phaser.Scene {
         if (this.isBattleOver) return;
 
         // Check for battle end conditions first
-        const allPlayerDefeated = this.playerTeam.every(char => char.isDefeated);
+        const allPlayerCharactersDefeated = this.playerTeam.every(char => char.isDefeated);
         const allEnemyDefeated = this.enemyTeam.every(char => char.isDefeated);
-        if (allPlayerDefeated || allEnemyDefeated) {
+        if (allPlayerCharactersDefeated || allEnemyDefeated) {
             this.endBattle();
             return;
         }
 
+       
         // Ensure the active characters list is up-to-date (should be correct from previous endTurn)
-        if (this.characters.length === 0) {
-            console.error("No active characters left at start of turn, ending battle.");
+        if (this.characters.length <= 1) { //dev_comment: changed from === 0 to <= 1 
+            console.error("Only one character left or less at start of turn, ending battle.");
             this.endBattle();
             return;
         }
@@ -117,11 +119,15 @@ class BattleScene extends Phaser.Scene {
 
         // 3. Change highlight based on determined action (BEFORE delay)
         if (chosenAction && this.currentActiveCharacter.display) {
-            const highlightColor = chosenAction.name === "Basic Attack" ? 0xffa500 : 0x0000ff; // Orange for basic, Blue for skill
-            this.currentActiveCharacter.display.highlightBorder(highlightColor);
-        } else if (!chosenAction) {
-             console.log(`${this.currentActiveCharacter.name} could not determine an action.`);
-             // If no action, maybe clear highlight or leave green? Let's leave green for now.
+            if (chosenAction.name === "Pass") {
+                // Clear highlight if the action is Pass
+                this.currentActiveCharacter.display.highlightBorder(null); // Assuming null clears the border
+                 console.log(`${this.currentActiveCharacter.name} is passing the turn.`);
+            } else {
+                // Set highlight for Basic Attack or Skills
+                const highlightColor = chosenAction.name === "Basic Attack" ? 0xffa500 : 0x0000ff; // Orange for basic, Blue for skill
+                this.currentActiveCharacter.display.highlightBorder(highlightColor);
+            }
         }
 
         // 4. Execute the chosen action after a delay
@@ -138,17 +144,43 @@ class BattleScene extends Phaser.Scene {
             // Execute the determined action
             if (chosenAction && typeof chosenAction.execute === 'function') {
                  // Re-check if targets still exist (could be defeated by effects between turns)
+                 // Imperative filtering for living characters
+                 const livingPlayerTeam = [];
+                 for (const char of this.playerTeam) {
+                     if (char && !char.isDefeated) {
+                         livingPlayerTeam.push(char);
+                     }
+                 }
+                 const livingEnemyTeam = [];
+                 for (const char of this.enemyTeam) {
+                     if (char && !char.isDefeated) {
+                         livingEnemyTeam.push(char);
+                     }
+                 }
+
                  const currentTargetTeam = this.currentActiveCharacter.team === 'player'
-                     ? this.enemyTeam.filter(char => !char.isDefeated)
-                     : this.playerTeam.filter(char => !char.isDefeated);
+                     ? livingEnemyTeam
+                     : livingPlayerTeam;
                  const currentCasterTeam = this.currentActiveCharacter.team === 'player'
-                     ? this.playerTeam.filter(char => !char.isDefeated)
-                     : this.enemyTeam.filter(char => !char.isDefeated); // Recalculate caster team too just in case
+                     ? livingPlayerTeam
+                     : livingEnemyTeam; // Recalculate caster team too just in case
 
-                 if (currentTargetTeam.length > 0) {
+                 // Check if there are valid targets based on the action's target type
+                 let validTargetsExist = false;
+                 if (chosenAction.targetType === 'enemy' || chosenAction.targetType === 'allEnemies') {
+                     validTargetsExist = currentTargetTeam.length > 0;
+                 } else if (chosenAction.targetType === 'ally' || chosenAction.targetType === 'allAllies' || chosenAction.targetType === 'self') {
+                     validTargetsExist = currentCasterTeam.length > 0;
+                 } else if (chosenAction.targetType === 'none' || chosenAction.name === "Pass") {
+                     validTargetsExist = true; // Actions like "Pass" don't need targets
+                 } else {
+                     // Default assumption: if target type is unclear, assume it needs a target team
+                     validTargetsExist = currentTargetTeam.length > 0 || currentCasterTeam.length > 0;
+                 }
+
+
+                 if (validTargetsExist) {
                       console.log(`Executing action: ${chosenAction.name} for ${this.currentActiveCharacter.name}`);
-
-                      // Highlight change is now done *before* the delay
 
                       // Pass potentially updated teams to the action's execute method
                       // Note: The skill's internal effectFn might use the teams passed during getAction,
@@ -244,7 +276,6 @@ class BattleScene extends Phaser.Scene {
             this.time.delayedCall(800, this.startTurn, [], this);
         }
     }
-
 
     // Updated to use CharacterDisplay instances
     drawAttackIndicator(attackerDisplay, targetDisplay) {

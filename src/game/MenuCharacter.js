@@ -1,6 +1,6 @@
 // src/game/MenuCharacter.js
 import BaseCharacter from './BaseCharacter.js';
-// LLM TODO: Import necessary UI or Scene components if MenuCharacter interacts directly with them.
+// TODO: Import necessary UI or Scene components if MenuCharacter interacts directly with them.
 
 /**
  * Represents a character within the context of a menu or pre-battle setup screen.
@@ -21,7 +21,8 @@ export class MenuCharacter extends BaseCharacter {
         // This would likely be a Phaser GameObject or a custom UI element instance.
         this.menuDisplay = null; // To be set externally
 
-        // LLM TODO: Add any other properties needed for menu interactions,
+
+        // TODO: Add any other properties needed for menu interactions,
         // e.g., equipment slots, temporary boosts selected in the menu.
     }
 
@@ -35,7 +36,7 @@ export class MenuCharacter extends BaseCharacter {
         this.assignedSlot = slotId;
         this.isInActiveTeam = slotId !== null;
         console.log(`${this.name} assigned to slot: ${slotId}`);
-        // LLM TODO: Update UI representation (this.menuDisplay) if it exists.
+        // TODO: Update UI representation (this.menuDisplay) if it exists.
         if (this.menuDisplay) {
             // Example: this.menuDisplay.updateSlotPosition(slotId);
         }
@@ -47,7 +48,7 @@ export class MenuCharacter extends BaseCharacter {
      */
     setSelected(selected) {
         this.isSelected = selected;
-        // LLM TODO: Update UI representation (e.g., highlight border).
+        // TODO: Update UI representation (e.g., highlight border).
         if (this.menuDisplay) {
             // Example: this.menuDisplay.setHighlight(selected);
         }
@@ -59,7 +60,7 @@ export class MenuCharacter extends BaseCharacter {
      */
     setDraggable(draggable) {
         this.isDraggable = draggable;
-         // LLM TODO: Update UI representation (e.g., enable/disable drag input).
+         // TODO: Update UI representation (e.g., enable/disable drag input).
          if (this.menuDisplay) {
             // Example: this.menuDisplay.setDragState(draggable);
         }
@@ -99,7 +100,8 @@ export class MenuCharacter extends BaseCharacter {
         return this.isDraggable;
     }
 
-    // LLM TODO: Add methods for equipping items, viewing detailed stats/skills
+
+    // TODO: Add methods for equipping items, viewing detailed stats/skills
     // in the menu context if needed.
 }
 
