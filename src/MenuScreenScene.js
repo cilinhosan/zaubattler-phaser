@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-// Removed import for old Character class
+import MenuCharacter from "./game/MenuCharacter.js"; // Import MenuCharacter
 import { getRandomCharacters } from "./game/starterCharacterPool.js"; // Import the new function
 
 class MenuScreenScene extends Phaser.Scene {
@@ -47,8 +47,22 @@ class MenuScreenScene extends Phaser.Scene {
 
             // The commented-out enemy team creation is removed as PreBattleSetupScene handles it.
 
-            // Pass the selected player team (array of MenuCharacter instances) to PreBattleSetupScene.
-            this.scene.start('PreBattleSetupScene', { playerTeam });
+            // --- Create Starting Inventory ---
+            const playerInventory = [];
+            const katherineDefinitionId = 'katherine'; // Assuming 'katherine' is the definition ID
+            for (let i = 0; i < 3; i++) {
+                // Create a new MenuCharacter instance for each Katherine
+                // Assign a unique ID if MenuCharacter requires/supports it, otherwise definitionId might suffice
+                // For now, assuming MenuCharacter constructor takes definitionId and level
+                const katherineInstance = new MenuCharacter(katherineDefinitionId, 1); // Level 1
+                // You might want to add a unique identifier if needed later, e.g., katherineInstance.uniqueId = `katherine_${i}`;
+                playerInventory.push(katherineInstance);
+            }
+            console.log("Created starting inventory:", playerInventory);
+
+
+            // Pass the selected player team and the new inventory to PreBattleSetupScene.
+            this.scene.start('PreBattleSetupScene', { playerTeam, playerInventory });
         });
     }
 }

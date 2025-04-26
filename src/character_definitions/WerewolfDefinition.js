@@ -11,7 +11,11 @@ export class WerewolfDefinition extends CharacterDefinition {
             stats: { hp: 550, atk: 80, def: 40, critChance: 0.15, critDamage: 1.70 },
             faction: FACTION.DARK,
             playableByPlayer: false,
-            description: "A fearsome werewolf."
+            description: "A fearsome werewolf.",
+            faceIconKey: 'default_character_icon', // Using default player icon for now
+            faceIconPath: 'assets/default_character_ilustration_face_icon.png',
+            battleIconKey: 'default_battle_icon', // Using default player battle icon for now
+            battleIconPath: 'assets/default_character_ilustration_4_3.png'
         });
 
          this.skillMetadata = {

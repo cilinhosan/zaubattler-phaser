@@ -11,7 +11,11 @@ export class WolfDefinition extends CharacterDefinition {
             stats: { hp: 450, atk: 65, def: 25, critChance: 0.10, critDamage: 1.50 },
             faction: FACTION.NEUTRAL,
             playableByPlayer: false,
-            description: "A wild wolf."
+            description: "A wild wolf.",
+            faceIconKey: 'default_character_icon', // Using default player icon for now
+            faceIconPath: 'assets/default_character_ilustration_face_icon.png',
+            battleIconKey: 'default_battle_icon', // Using default player battle icon for now
+            battleIconPath: 'assets/default_character_ilustration_4_3.png'
         });
 
          this.skillMetadata = {

@@ -11,7 +11,11 @@ export class OrcDefinition extends CharacterDefinition {
             stats: { hp: 600, atk: 70, def: 45, critChance: 0.10, critDamage: 1.60 },
             faction: FACTION.SEPIA,
             playableByPlayer: false,
-            description: "A brutish Orc."
+            description: "A brutish Orc.",
+            faceIconKey: 'default_character_icon', // Using default player icon for now
+            faceIconPath: 'assets/default_character_ilustration_face_icon.png',
+            battleIconKey: 'default_battle_icon', // Using default player battle icon for now
+            battleIconPath: 'assets/default_character_ilustration_4_3.png'
         });
 
          this.skillMetadata = {

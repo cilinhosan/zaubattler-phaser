@@ -11,7 +11,11 @@ export class KatherineDefinition extends CharacterDefinition {
             stats: { hp: 480, atk: 85, def: 35, critChance: 0.20, critDamage: 1.80 },
             faction: FACTION.CRIMSON,
             playableByPlayer: true,
-            description: "A fiery warrior."
+            description: "A fiery warrior.",
+            faceIconKey: 'default_character_icon',
+            faceIconPath: 'assets/default_character_ilustration_face_icon.png',
+            battleIconKey: 'default_battle_icon',
+            battleIconPath: 'assets/default_character_ilustration_4_3.png'
         });
 
         // Define skill metadata (name, description, type, cooldown, targetType)

@@ -7,7 +7,10 @@ module.exports = {
   },
   devtool: 'inline-source-map',
   devServer: {
-    static: { directory: path.resolve(__dirname, 'dist') },
+    static: [ // Serve from both dist and assets
+        { directory: path.resolve(__dirname, 'dist') },
+        { directory: path.resolve(__dirname, 'assets'), publicPath: '/assets' }, // Serve assets under /assets path
+    ],
     hot: true,
   },
 

@@ -11,7 +11,11 @@ export class ElzetteDefinition extends CharacterDefinition {
             stats: { hp: 480, atk: 85, def: 35, critChance: 0.20, critDamage: 1.80 },
             faction: FACTION.LIGHT, // Changed Faction
             playableByPlayer: true, // Playable
-            description: "A radiant warrior." // Adjusted description
+            description: "A radiant warrior.", // Adjusted description
+            faceIconKey: 'elzette_face_icon',
+            faceIconPath: 'assets/elzette_illustration_face_icon.png',
+            battleIconKey: 'elzette_battle_icon',
+            battleIconPath: 'assets/elzette_illustration_4_3.png'
         });
 
         // Copy Katherine's skill metadata (adjust names/descriptions if needed later)

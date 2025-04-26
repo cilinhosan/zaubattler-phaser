@@ -5,29 +5,26 @@ import MenuCharacter from './MenuCharacter.js';
 import { characterDefinitionClasses, getCharacterDefinition } from '../CharacterDefinitionList.js';
 
 // Create the pool of player-usable characters based on definitions
-const playerCharacterPool = [];
+// Store only the IDs of playable character definitions
+const playableCharacterDefinitionIds = [];
 
-// Populate the pool from definition classes
+// Populate the list of playable IDs from definition classes
 for (const definitionId in characterDefinitionClasses) {
-    // Get an instance of the definition to check its properties
-    const definitionInstance = getCharacterDefinition(definitionId);
+    const definitionInstance = getCharacterDefinition(definitionId); // Get instance to check properties
     if (definitionInstance && definitionInstance.playableByPlayer) {
-        // Create a MenuCharacter instance for each playable definition
-        // We assume level 1 for the initial pool characters
-        const menuCharacter = new MenuCharacter(definitionId, 1);
-        playerCharacterPool.push(menuCharacter);
-        console.log(`Added ${menuCharacter.getName()} to starter pool.`);
+        playableCharacterDefinitionIds.push(definitionId);
+        console.log(`Added playable definition ID '${definitionId}' (${definitionInstance.name}) to starter pool.`);
     } else if (!definitionInstance) {
-        console.warn(`Could not get definition instance for ID ${definitionId} while building starter pool.`);
+        console.warn(`Could not get definition instance for ID ${definitionId} while building starter pool ID list.`);
     }
 }
 
-if (playerCharacterPool.length === 0) {
-    console.warn("Starter character pool is empty! Check characterDefinitions.");
+if (playableCharacterDefinitionIds.length === 0) {
+    console.warn("Starter character pool (IDs) is empty! Check characterDefinitions.");
 }
 
 /**
- * Gets a specified number of unique random characters from the player pool.
+ * Gets a specified number of unique random characters by creating new instances.
  * @param {number} count - The number of unique characters to retrieve.
  * @returns {MenuCharacter[]} An array of unique MenuCharacter instances, or fewer if the pool is smaller than count.
  */
@@ -35,23 +32,41 @@ export function getRandomCharacters(count) {
     if (count <= 0) {
         return [];
     }
-    if (count >= playerCharacterPool.length) {
-        // If requesting more or equal to the pool size, return a shuffled copy of the whole pool
-        return [...playerCharacterPool].sort(() => 0.5 - Math.random());
-    }
 
-    const shuffledPool = [...playerCharacterPool].sort(() => 0.5 - Math.random());
-    return shuffledPool.slice(0, count);
+    // Shuffle the available definition IDs
+    const shuffledIds = [...playableCharacterDefinitionIds].sort(() => 0.5 - Math.random());
+
+    // Take the required number of unique IDs (or all if count is too high)
+    const selectedIds = shuffledIds.slice(0, Math.min(count, shuffledIds.length));
+
+    // Create NEW MenuCharacter instances for the selected IDs
+    const characters = selectedIds.map(id => {
+        try {
+            return new MenuCharacter(id, 1); // Create instance here, ensuring latest definition is fetched
+        } catch (error) {
+            console.error(`Failed to create MenuCharacter for ID '${id}' in getRandomCharacters:`, error);
+            return null; // Return null if creation fails
+        }
+    }).filter(char => char !== null); // Filter out any nulls from creation errors
+
+    return characters;
 }
 
 /**
- * Gets the complete pool of playable characters.
+ * Gets the complete pool of playable characters as NEW instances.
  * Use this if you need to display all available characters.
- * @returns {MenuCharacter[]} A shallow copy of the player character pool.
+ * @returns {MenuCharacter[]} An array of new MenuCharacter instances for all playable definitions.
  */
 export function getPlayerCharacterPool() {
-    // Return a shallow copy to prevent external modification of the original pool
-    return [...playerCharacterPool];
+    // Create NEW instances every time the full pool is requested
+    return playableCharacterDefinitionIds.map(id => {
+         try {
+            return new MenuCharacter(id, 1);
+        } catch (error) {
+            console.error(`Failed to create MenuCharacter for ID '${id}' in getPlayerCharacterPool:`, error);
+            return null;
+        }
+    }).filter(char => char !== null);
 }
 
 // Optional: Default export could be the function to get the whole pool

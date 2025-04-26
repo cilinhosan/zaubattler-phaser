@@ -14,62 +14,88 @@ const ENEMY_START_Y = 400; // Adjusted for 1080p
 const HP_BAR_HEIGHT = 10;
 const HP_BAR_Y_OFFSET = 12.5; // Decreased by half (25 / 2)
 
-class CharacterDisplay {
-    constructor(scene, character, teamType, slotIndex) {
-        this.scene = scene;
+class CharacterDisplay extends Phaser.GameObjects.Container { // Inherit from Container
+    constructor(scene, x, y, character) {
+        super(scene, x, y); // Call Container constructor
+
         this.character = character;
-        this.teamType = teamType;
-        this.slotIndex = slotIndex;
 
-        // Calculate position based on team and slot index
-        const startX = teamType === 'player' ? PLAYER_START_X : ENEMY_START_X;
-        const startY = teamType === 'player' ? PLAYER_START_Y : ENEMY_START_Y;
+        // Use fixed dimensions for the inventory display box
+        this.rectWidth = 100; // Make it square, slightly larger than icon
+        this.rectHeight = 100;
 
-        this.rectX = startX;
-        this.rectY = startY + (BOX_HEIGHT + PADDING) * slotIndex;
-        this.rectWidth = BOX_WIDTH;
-        this.rectHeight = BOX_HEIGHT;
+        // Store position relative to container (passed as x, y)
+        // Note: Container's position is set by scene.add.existing(this) or similar
+        // We draw elements relative to the container's origin (0,0)
 
         this.createDisplayElements();
+
+        // Add the container itself to the scene (important!)
+        // scene.add.existing(this); // This is handled in PreBattleSetupScene now
     }
 
     createDisplayElements() {
         // Graphics for the box and HP bar
+        // --- Draw elements relative to the Container's origin (0,0) ---
+
+        // Graphics for the box
         this.graphics = this.scene.add.graphics();
-        this.graphics.setPosition(this.rectX, this.rectY);
         this.graphics.lineStyle(2, 0xffffff, 1);
+        // Draw at (0,0) relative to container
         this.graphics.strokeRect(0, 0, this.rectWidth, this.rectHeight);
+        this.add(this.graphics); // Add graphics to the container
 
-        // Text for the character name
-        const displayName = this.character.name || this.character.type;
-        this.text = this.scene.add.text(this.rectX + this.rectWidth / 2, this.rectY + this.rectHeight / 2, displayName, {
-            fontSize: '32px',
-            fill: '#fff'
-        }).setOrigin(0.5);
+        // --- Add Icon ---
+        // TODO: Use actual character icon if available, fallback to default
+        // Get face icon key from definition, fallback to default character icon
+        const definition = this.character.definition; // Assuming character instance has .definition
+        const faceIconKey = definition?.faceIconKey || 'default_character_icon';
+        try {
+            // Ensure the icon key is valid and loaded
+            if (this.scene.textures.exists(faceIconKey)) {
+                // Center the 90x90 icon within the 100x100 box
+                this.icon = this.scene.add.image(this.rectWidth / 2, this.rectHeight / 2, faceIconKey);
+                this.icon.setDisplaySize(90, 90);
+                this.add(this.icon); // Add icon to the container
+            } else {
+                 console.warn(`Face icon key '${faceIconKey}' not found for ${this.character.name}.`);
+                 // Optionally add a placeholder graphic
+            }
+        } catch (e) {
+            console.error(`Error creating icon for ${this.character.name}:`, e);
+        }
 
-        // HP bar
-        this.hpBar = this.scene.add.graphics();
-        this.hpBar.fillStyle(0x00ff00, 1); // Green color for HP
-        this.hpBar.fillRect(this.rectX, this.rectY + this.rectHeight + HP_BAR_Y_OFFSET, this.rectWidth, HP_BAR_HEIGHT);
 
-        // HP text - Use getter methods
-        const initialHp = typeof this.character.getCurrentHp === 'function' ? this.character.getCurrentHp() : '?';
-        const initialMaxHp = typeof this.character.getMaxHp === 'function' ? this.character.getMaxHp() : '?';
-        this.hpText = this.scene.add.text(this.rectX + this.rectWidth / 2, this.rectY + this.rectHeight + HP_BAR_Y_OFFSET + HP_BAR_HEIGHT / 2, `${initialHp}/${initialMaxHp}`, {
-            fontSize: '24px',
-            fill: '#fff'
-        })
-        .setOrigin(0.5)
-        .setStroke('#000000', 4); // Black stroke
+        // Text for the character name (below the icon/box)
+        const displayName = this.character.name || this.character.type || 'Unknown';
+        this.text = this.scene.add.text(this.rectWidth / 2, this.rectHeight + 5, displayName, { // Position below box
+            fontSize: '16px', // Smaller font for inventory
+            fill: '#fff',
+            align: 'center',
+            wordWrap: { width: this.rectWidth - 10 } // Wrap text
+        }).setOrigin(0.5, 0); // Origin at top-center
+        this.add(this.text); // Add text to the container
 
-        // Store references to Phaser objects on the character object for easier access in BattleScene (e.g., for attack indicator)
-        // This might be removed later if BattleScene only interacts with CharacterDisplay
-        this.character.graphics = this.graphics;
-        this.character.text = this.text;
-        this.character.hpBar = this.hpBar;
-        this.character.hpText = this.hpText;
-        this.character.rectWidth = this.rectWidth; // Store dimensions too
-        this.character.rectHeight = this.rectHeight;
+        // Remove HP bar and HP text for inventory display (or make conditional)
+        // this.hpBar = ...
+        // this.hpText = ...
+        // this.add(this.hpBar);
+        // this.add(this.hpText);
+
+        // Adjust container size based on content if needed, or use fixed size
+        // For interaction, set the container's hit area
+        const textHeight = this.text.getBounds().height;
+        // Set container size to include the box and the text below it
+        this.setSize(this.rectWidth, this.rectHeight + 5 + textHeight); // Keep container size calculation for layout
+        // Make the container interactive using ONLY the box dimensions for now
+        // Set interactive area to match the 100x100 box drawn at local (0,0)
+        console.log(`[Debug CharacterDisplay] Setting interactive hit area: 0, 0, ${this.rectWidth}, ${this.rectHeight}`);
+        this.setInteractive(new Phaser.Geom.Rectangle(0, 0, this.rectWidth, this.rectHeight), Phaser.Geom.Rectangle.Contains);
+
+
+        // Remove direct assignment to character object - keep display separate
+        // this.character.graphics = this.graphics;
+        // ...
     }
 
     updateHpDisplay() {

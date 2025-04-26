@@ -13,6 +13,9 @@ const config = {
         autoCenter: Phaser.Scale.CENTER_BOTH
     },
 
+    input: { // <-- ADD THIS BLOCK
+        debug: true
+    },
     physics: {
         default: 'arcade',
         arcade: {

@@ -11,7 +11,11 @@ export class GoblinDefinition extends CharacterDefinition {
             stats: { hp: 350, atk: 50, def: 20, critChance: 0.05, critDamage: 1.50 },
             faction: FACTION.NEUTRAL,
             playableByPlayer: false, // Make Goblin playable for testing pool
-            description: "A weak but annoying goblin."
+            description: "A weak but annoying goblin.",
+            faceIconKey: 'default_character_icon', // Using default player icon for now
+            faceIconPath: 'assets/default_character_ilustration_face_icon.png',
+            battleIconKey: 'default_battle_icon', // Using default player battle icon for now
+            battleIconPath: 'assets/default_character_ilustration_4_3.png'
         });
 
         this.skillMetadata = {

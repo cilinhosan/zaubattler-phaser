@@ -15,6 +15,7 @@ export class BaseCharacter {
             throw new Error(`Failed to create character: Definition not found for ID "${definitionId}"`);
         }
 
+        this.definition = definition; // <-- STORE THE DEFINITION OBJECT
         this.id = uuidv4(); // Unique identifier for this specific character instance
         this.definitionId = definitionId; // Store the ID used to create it (e.g., "katherine")
         this.name = definition.name;

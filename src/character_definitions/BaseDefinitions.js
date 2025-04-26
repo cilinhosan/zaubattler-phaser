@@ -16,7 +16,10 @@ export const FACTION = Object.freeze({
  * Contains common properties and structure.
  */
 export class CharacterDefinition {
-    constructor({ id, name, stats, faction, playableByPlayer = false, description = "" }) {
+    constructor({
+        id, name, stats, faction, playableByPlayer = false, description = "",
+        faceIconKey, faceIconPath, battleIconKey, battleIconPath // Add icon properties here
+    }) {
         if (!id || !name || !stats || !faction) {
             throw new Error("Missing required fields for CharacterDefinition: id, name, stats, faction");
         }
@@ -32,6 +35,12 @@ export class CharacterDefinition {
         this.faction = faction;
         this.playableByPlayer = playableByPlayer;
         this.description = description;
+
+        // Assign icon properties (provide defaults if necessary, though subclasses should define them)
+        this.faceIconKey = faceIconKey || 'default_character_icon';
+        this.faceIconPath = faceIconPath || 'assets/default_character_ilustration_face_icon.png';
+        this.battleIconKey = battleIconKey || 'default_battle_icon';
+        this.battleIconPath = battleIconPath || 'assets/default_character_ilustration_4_3.png';
 
         // Skills will be defined as methods in subclasses,
         // and metadata stored in a separate structure.
