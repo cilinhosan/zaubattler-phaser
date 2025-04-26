@@ -3,6 +3,7 @@ import MenuScreenScene from './MenuScreenScene';
 import BattleScene from './BattleScene';
 import PreBattleSetupScene from './PreBattleSetupScene';
 import EndGameScene from './EndGameScene'; // Import the new scene
+import StartGameScene from './StartGameScene'; // Import the new StartGameScene
 
 const config = {
     type: Phaser.AUTO,
@@ -22,6 +23,7 @@ const config = {
             debug: false
         }
     },
-    scene: [MenuScreenScene, PreBattleSetupScene, BattleScene, EndGameScene]
+    // StartGameScene is now the first scene loaded
+    scene: [StartGameScene, MenuScreenScene, PreBattleSetupScene, BattleScene, EndGameScene]
 };
 const game = new Phaser.Game(config);

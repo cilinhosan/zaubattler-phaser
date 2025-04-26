@@ -1,6 +1,9 @@
 import Phaser from "phaser";
 import battlesData from './game/battles.json'; // Import battle data
 import CharacterBattleDisplay from './game/CharacterBattleDisplay'; // Import CharacterBattleDisplay class
+import GameDataManager from './game/GameDataManager.js'; // Import the GameDataManager singleton
+import BattleCharacter from './game/BattleCharacter.js'; // Needed to create instances
+import { getCharacterDefinition } from './CharacterDefinitionList.js'; // Needed for enemy creation
 
 const MAX_SLOTS = 5; // Define max slots per team
 
@@ -22,10 +25,36 @@ class BattleScene extends Phaser.Scene {
         // Set background color
         this.cameras.main.setBackgroundColor('#1a1a1a'); // Dark grey color
 
-        // Receive team data and battle index from PreBattleSetupScene
-        this.playerTeam = data.playerTeam;
-        this.enemyTeam = data.enemyTeam;
+        // Get battle index from data
         this.battleIndex = data.battleIndex;
+
+        // --- Get Player Team from GameDataManager ---
+        const activePlayerTeamData = GameDataManager.getActiveTeam(); // Get array of character data objects
+        // Convert player team data to BattleCharacter instances for this battle
+        this.playerTeam = activePlayerTeamData.map(charData => {
+            // Assuming charData has definitionId and level
+            return new BattleCharacter(charData.definitionId, charData.level || 1, 'player');
+        });
+        console.log("BattleScene: Player team loaded from GameDataManager:", this.playerTeam.map(c=>c.name));
+
+        // --- Create Enemy Team based on battleIndex ---
+        const currentBattle = battlesData[this.battleIndex];
+        if (!currentBattle) {
+             console.error(`BattleScene: Invalid battleIndex ${this.battleIndex}. Cannot load enemies.`);
+             // Handle error - maybe go back to menu?
+             this.scene.start('MenuScreenScene');
+             return;
+        }
+        this.enemyTeam = currentBattle.enemies.map(enemyConfig => {
+            const definition = getCharacterDefinition(enemyConfig.type.toLowerCase());
+            if (!definition) {
+                console.error(`BattleScene: Character definition not found for enemy type: ${enemyConfig.type}. Skipping enemy.`);
+                return null;
+            }
+            return new BattleCharacter(definition.id, 1, 'enemy'); // Level 1, enemy team
+        }).filter(character => character !== null);
+        console.log("BattleScene: Enemy team created:", this.enemyTeam.map(c=>c.name));
+
 
         // Create a combined array of all characters for this battle instance
         this.allBattleCharacters = [...this.playerTeam, ...this.enemyTeam];
@@ -319,8 +348,8 @@ class BattleScene extends Phaser.Scene {
                     });
                     // --- End Reset Player HP ---
 
-                    // Pass the original playerTeam (with reset stats) and the next index
-                    this.scene.start('PreBattleSetupScene', { playerTeam: this.playerTeam, battleIndex: nextBattleIndex });
+                    // Pass only the next battle index. PreBattleSetupScene will get team from GameDataManager.
+                    this.scene.start('PreBattleSetupScene', { battleIndex: nextBattleIndex });
                 }, [], this);
             } else {
                 // All battles completed

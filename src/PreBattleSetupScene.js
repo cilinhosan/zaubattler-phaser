@@ -6,6 +6,7 @@ import { getCharacterDefinition } from './CharacterDefinitionList.js'; // Correc
 // import MenuCharacter from './game/MenuCharacter.js';
 // import { fireBlastSkill, atkBoostPassive } from './game/SkillDefinitions.js'; // Removed unused skill imports
 import MenuCharacterDisplay from './game/MenuCharacterDisplay.js'; // Import MenuCharacterDisplay
+import GameDataManager from './game/GameDataManager.js'; // Import the GameDataManager singleton
 
 
 class PreBattleSetupScene extends Phaser.Scene {
@@ -14,9 +15,7 @@ class PreBattleSetupScene extends Phaser.Scene {
     }
 
     init(data) {
-        // Store inventory data early for preload
-        this.playerInventoryData = data.playerInventory || [];
-        this.playerTeamData = data.playerTeam || []; // Also store team data if needed for preload
+        // Store battle index. Team and inventory are fetched from GameDataManager.
         this.battleIndex = data.battleIndex || 0;
     }
 
@@ -33,7 +32,10 @@ class PreBattleSetupScene extends Phaser.Scene {
         // --- Preload Specific Character Icons (Face and Battle) ---
         const loadedIconKeys = new Set([defaultFaceIconKey, defaultBattleIconKey, defaultEnemyIconKey]);
 
-        const charactersToCheck = [...this.playerInventoryData, ...this.playerTeamData];
+        // Fetch inventory and team from manager for preloading icons
+        const currentInventory = GameDataManager.getInventory();
+        const currentTeamSlots = GameDataManager.getTeamSlots(); // Get slots (includes nulls)
+        const charactersToCheck = [...currentInventory, ...currentTeamSlots.filter(c => c !== null)]; // Combine inventory and non-null team members
 
         charactersToCheck.forEach(charData => {
             const definition = charData?.definition;
@@ -79,8 +81,9 @@ class PreBattleSetupScene extends Phaser.Scene {
         // this.add.image(400, 300, 'background'); // Add background if you have one
 
         // Use data stored in init()
-        const playerTeam = this.playerTeamData;
-        const playerInventory = this.playerInventoryData;
+        // Get current team slots and inventory from the GameDataManager
+        const playerTeamSlotsData = GameDataManager.getTeamSlots(); // Array with character data or nulls
+        const playerInventory = GameDataManager.getInventory();
         const battleIndex = this.battleIndex;
 
         // --- Load Enemy Team based on battleIndex ---
@@ -171,12 +174,20 @@ class PreBattleSetupScene extends Phaser.Scene {
 
 
         // --- Scrollable Player Inventory ---
-        this.add.text(this.cameras.main.width / 2, 650, 'Player Inventory', { fontSize: '32px', fill: '#fff' }).setOrigin(0.5);
+        const inventoryTitleText = this.add.text(this.cameras.main.width / 2, 450, 'Member Reserve', { fontSize: '32px', fill: '#fff' }).setOrigin(0.5);
+        const textBottomY = inventoryTitleText.y + inventoryTitleText.height * (1 - inventoryTitleText.originY); // Calculate bottom based on origin
+        console.log(`[Debug Layout] Inventory Title Text Bottom Y: ${textBottomY.toFixed(1)}`); // <-- ADD LOG
+
+        // --- Calculate Inventory Area Position ---
+        const inventoryPaddingY = 20; // Space between title and inventory area
+        const inventoryAreaY = textBottomY + inventoryPaddingY;
+        console.log(`[Debug Layout] Calculated inventoryAreaY: ${inventoryAreaY}`); // <-- ADD LOG
+
         this.inventoryDisplays = []; // Array to hold MenuCharacterDisplay objects for inventory
         this.inventoryCharacterData = playerInventory; // Store the raw inventory data
 
         const inventoryAreaX = 50;
-        const inventoryAreaY = 700;
+        // inventoryAreaY is now calculated above
         const inventoryAreaWidth = this.cameras.main.width - 100;
         const inventoryAreaHeight = 300; // Visible height
 
@@ -299,7 +310,7 @@ class PreBattleSetupScene extends Phaser.Scene {
         // });
 
         // Populate initial team visuals AFTER inventory is set up
-        this._populateInitialTeam(playerTeam);
+        this._populateInitialTeam(playerTeamSlotsData); // Pass the data fetched from GameDataManager
 
 
         // --- State Variables ---
@@ -320,29 +331,37 @@ class PreBattleSetupScene extends Phaser.Scene {
         buttonOutline.strokeRect(buttonBounds.x - 5, buttonBounds.y - 5, buttonBounds.width + 10, buttonBounds.height + 10);
 
         startBattleButton.on('pointerdown', () => {
-            // --- Get Final Player Team from Slots ---
-            const finalPlayerTeamData = this.playerTeamDisplays
-                .map(displayObject => displayObject ? displayObject.data : null) // Get data from stored display objects {icon, text, data}
-                .filter(charData => charData !== null); // Filter out empty slots
+            // --- Get Final Player Team Slot Data ---
+            // Get the data from each visual slot (can be character data or null)
+            const finalTeamSlotData = this.playerTeamDisplays
+                .map(displayObject => displayObject ? displayObject.data : null);
 
-            if (finalPlayerTeamData.length === 0) {
+            // --- Save Final Team to GameDataManager ---
+            GameDataManager.updateTeam(finalTeamSlotData);
+            console.log("PreBattleSetupScene: Final team saved to GameDataManager.");
+
+            // --- Get Active Team for Battle ---
+            // Filter out empty slots for the actual battle team
+            const activePlayerTeamData = finalTeamSlotData.filter(charData => charData !== null);
+
+            if (activePlayerTeamData.length === 0) {
                 console.error("Player team is empty. Cannot start battle.");
                 // TODO: Show an error message to the player?
                 return;
             }
 
-            // --- Convert final team data to BattleCharacter instances ---
-            const playerBattleTeam = finalPlayerTeamData.map(charData => {
-                 if (!charData || !charData.definitionId) {
+            // --- Convert active team data to BattleCharacter instances ---
+            const playerBattleTeam = activePlayerTeamData.map(charData => {
+                 if (!charData || !charData.definitionId) { // Should not happen if data is valid
                      console.error("Invalid character data in final team slot:", charData);
                      return null; // Skip invalid character data
                  }
                  // Create a new BattleCharacter for the battle
                  // Ensure level is correctly sourced if available (e.g., charData.level)
                  return new BattleCharacter(charData.definitionId, charData.level || 1, 'player');
-             }).filter(char => char !== null); // Filter out nulls from conversion errors
+             }); // No need to filter nulls here if activePlayerTeamData is already filtered
 
-             if (playerBattleTeam.length !== finalPlayerTeamData.length) {
+             if (playerBattleTeam.length !== activePlayerTeamData.length) {
                  console.warn("Some characters could not be converted for battle.");
                  // Decide if battle should proceed with partial team
              }
@@ -356,8 +375,8 @@ class PreBattleSetupScene extends Phaser.Scene {
             console.log("Starting Battle with Player Team:", playerBattleTeam.map(c => c.name));
             console.log("Enemy Team:", enemyTeam.map(c => c.name));
 
-            // Pass the converted playerBattleTeam and the generated enemyTeam
-            this.scene.start('BattleScene', { playerTeam: playerBattleTeam, enemyTeam, battleIndex });
+            // Start BattleScene - It will get the team from GameDataManager
+            this.scene.start('BattleScene', { battleIndex });
         });
 
         // Add a global click listener to hide the popup if clicking outside
@@ -397,14 +416,15 @@ class PreBattleSetupScene extends Phaser.Scene {
 
     // --- Helper Functions ---
 
-    _populateInitialTeam(playerTeam) {
-        // TODO: Place initial characters from playerTeam into the team slots visually
-        playerTeam.forEach((charData, index) => {
-            if (index < this.playerTeamSlots.length && charData) {
+    _populateInitialTeam(playerTeamSlotsData) {
+        // Place characters from the globally stored team slots into the visual slots
+        playerTeamSlotsData.forEach((charData, index) => {
+            // charData will be the character object from inventory or null
+            if (index < this.playerTeamSlots.length) { // Always attempt to update, even if charData is null (to clear visuals)
                 this._updateTeamSlotVisual(index, charData);
             }
         });
-        // TODO: Mark corresponding inventory characters as 'selected' (checkmark)
+        // Mark corresponding inventory characters as 'selected' (checkmark)
         this._updateInventorySelectionVisuals();
     }
 

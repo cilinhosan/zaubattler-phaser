@@ -1,6 +1,7 @@
 import Phaser from "phaser";
 import MenuCharacter from "./game/MenuCharacter.js"; // Import MenuCharacter
 import { getRandomCharacters } from "./game/starterCharacterPool.js"; // Import the new function
+import GameDataManager from "./game/GameDataManager.js"; // Import the GameDataManager singleton
 
 class MenuScreenScene extends Phaser.Scene {
     constructor() {
@@ -35,34 +36,49 @@ class MenuScreenScene extends Phaser.Scene {
 
         // Make play text interactive
         playText.setInteractive();
+
+        // --- Create Starting Inventory and Team Immediately ---
+        const playerInventory = [];
+        // Get 2 random MenuCharacters for the player's starting team
+        const playerTeam = getRandomCharacters(2);
+
+        if (playerTeam.length < 2) {
+             console.warn("Could not retrieve 2 characters from the pool. Check pool size and definitions.");
+             // Handle this case - show error to user? Prevent starting?
+             // For now, proceed even if the team is smaller than expected.
+        }
+        // Ensure playerTeam has at least null placeholders if fewer than 2 characters were found
+        const initialTeam = [
+            playerTeam.length > 0 ? playerTeam[0] : null,
+            playerTeam.length > 1 ? playerTeam[1] : null
+        ];
+
+        // Add the initial team members to the inventory as well
+        initialTeam.forEach(char => {
+            if (char) playerInventory.push(char);
+        });
+
+        const katherineDefinitionId = 'katherine'; // Assuming 'katherine' is the definition ID
+        for (let i = 0; i < 20; i++) {
+            // Create a new MenuCharacter instance for each Katherine
+            const katherineInstance = new MenuCharacter(katherineDefinitionId, 1); // Level 1
+            playerInventory.push(katherineInstance);
+        }
+        console.log("Created starting inventory:", playerInventory);
+        console.log("Created starting team:", initialTeam.filter(c => c !== null)); // Log only non-null team members
+
+        // Initialize the Game Data Manager with inventory and initial team
+        // Note: initializeInventory also clears team slots, so call it first.
+        GameDataManager.initializeInventory(playerInventory);
+        GameDataManager.initializeTeam(initialTeam); // Pass the array that might contain nulls
+        console.log("MenuScreenScene: Game state initialized.");
+        // --- End Immediate Setup ---
+
+        // Button click now only transitions
         playText.on('pointerdown', () => {
-            // Get 2 random MenuCharacters for the player's starting team
-            const playerTeam = getRandomCharacters(2);
-
-            if (playerTeam.length < 2) {
-                 console.warn("Could not retrieve 2 characters from the pool. Check pool size and definitions.");
-                 // Handle this case - show error to user? Prevent starting?
-                 // For now, proceed even if the team is smaller than expected.
-            }
-
-            // The commented-out enemy team creation is removed as PreBattleSetupScene handles it.
-
-            // --- Create Starting Inventory ---
-            const playerInventory = [];
-            const katherineDefinitionId = 'katherine'; // Assuming 'katherine' is the definition ID
-            for (let i = 0; i < 20; i++) {
-                // Create a new MenuCharacter instance for each Katherine
-                // Assign a unique ID if MenuCharacter requires/supports it, otherwise definitionId might suffice
-                // For now, assuming MenuCharacter constructor takes definitionId and level
-                const katherineInstance = new MenuCharacter(katherineDefinitionId, 1); // Level 1
-                // You might want to add a unique identifier if needed later, e.g., katherineInstance.uniqueId = `katherine_${i}`;
-                playerInventory.push(katherineInstance);
-            }
-            console.log("Created starting inventory:", playerInventory);
-
-
-            // Pass the selected player team and the new inventory to PreBattleSetupScene.
-            this.scene.start('PreBattleSetupScene', { playerTeam, playerInventory });
+            console.log("MenuScreenScene: Starting PreBattleSetupScene...");
+            // Start PreBattleSetupScene without passing team/inventory data
+            this.scene.start('PreBattleSetupScene', { /* battleIndex will default to 0 */ });
         });
     }
 }

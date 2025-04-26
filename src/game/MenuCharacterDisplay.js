@@ -55,7 +55,7 @@ class MenuCharacterDisplay extends Phaser.GameObjects.Container { // Inherit fro
             if (this.scene.textures.exists(faceIconKey)) {
                 // Center the 90x90 icon within the 100x100 box
                 this.icon = this.scene.add.image(this.rectWidth / 2, this.rectHeight / 2, faceIconKey);
-                this.icon.setDisplaySize(90, 90);
+                this.icon.setDisplaySize(99, 99);
                 this.add(this.icon); // Add icon to the container
             } else {
                  console.warn(`Face icon key '${faceIconKey}' not found for ${this.character.name}.`);

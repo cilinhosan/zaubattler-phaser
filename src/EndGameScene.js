@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import GameDataManager from './game/GameDataManager.js'; // Import the GameDataManager
 
 class EndGameScene extends Phaser.Scene {
     constructor() {
@@ -48,7 +49,8 @@ class EndGameScene extends Phaser.Scene {
         buttonOutline.strokeRect(buttonBounds.x - 10, buttonBounds.y - 5, buttonBounds.width + 20, buttonBounds.height + 10); // Add padding
 
         menuButton.on('pointerdown', () => {
-            // Reset any necessary game state if needed before returning to menu
+            // Reset global game state (inventory, team) before returning to menu
+            GameDataManager.reset();
             this.scene.start('MenuScreenScene');
         });
 
