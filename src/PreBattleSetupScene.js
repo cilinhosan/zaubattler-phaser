@@ -5,7 +5,7 @@ import { getCharacterDefinition } from './CharacterDefinitionList.js'; // Correc
 // TODO: Check if MenuCharacter is needed here if playerTeam needs inspection/display beyond base stats
 // import MenuCharacter from './game/MenuCharacter.js';
 // import { fireBlastSkill, atkBoostPassive } from './game/SkillDefinitions.js'; // Removed unused skill imports
-import CharacterDisplay from './game/CharacterDisplay.js'; // Import CharacterDisplay
+import MenuCharacterDisplay from './game/MenuCharacterDisplay.js'; // Import MenuCharacterDisplay
 
 
 class PreBattleSetupScene extends Phaser.Scene {
@@ -172,7 +172,7 @@ class PreBattleSetupScene extends Phaser.Scene {
 
         // --- Scrollable Player Inventory ---
         this.add.text(this.cameras.main.width / 2, 650, 'Player Inventory', { fontSize: '32px', fill: '#fff' }).setOrigin(0.5);
-        this.inventoryDisplays = []; // Array to hold CharacterDisplay objects for inventory
+        this.inventoryDisplays = []; // Array to hold MenuCharacterDisplay objects for inventory
         this.inventoryCharacterData = playerInventory; // Store the raw inventory data
 
         const inventoryAreaX = 50;
@@ -197,55 +197,74 @@ class PreBattleSetupScene extends Phaser.Scene {
             const displayX = inventoryStartX + gridX * inventorySpacingX;
             const displayY = inventoryStartY + gridY * inventorySpacingY;
 
-            const charDisplay = new CharacterDisplay(this, displayX, displayY, charData);
-            // charDisplay.setInteractive(); // REMOVED - Let CharacterDisplay handle its own interaction setup
+            const charDisplay = new MenuCharacterDisplay(this, displayX, displayY, charData);
+            // charDisplay.setInteractive(); // REMOVED - Let MenuCharacterDisplay handle its own interaction setup
 
             // Store the display object and link it to the data
             this.inventoryDisplays.push(charDisplay);
             charDisplay.setData('characterData', charData);
             charDisplay.setData('inventoryIndex', index);
 
-            // Add click listener - Attach back to the container
-            charDisplay.on('pointerdown', (pointer, localX_provided, localY_provided, event) => { // Rename default localX/Y as they might be unreliable here
-                console.log(`[Debug] Inventory item pointerdown event on container: ${charData.name}`);
-                event.stopPropagation();
-
-                // --- Use Provided Local Coordinates for Hit Test ---
-                // The localX/Y provided by the event *should* be relative to the interactive object (charDisplay)
-                console.log(`[Debug] Provided Local Coords: X=${localX_provided.toFixed(1)}, Y=${localY_provided.toFixed(1)}`);
-
-                // Check if the provided local point is within the 100x100 hit area (defined from 0,0 in CharacterDisplay)
-                const hitAreaWidth = 100; // Based on charDisplay.rectWidth
-                const hitAreaHeight = 100; // Based on charDisplay.rectHeight
-                if (localX_provided >= 0 && localX_provided <= hitAreaWidth && localY_provided >= 0 && localY_provided <= hitAreaHeight) {
-                    console.log(`[Debug] Provided Local Coords Hit Test: SUCCESS`);
-
-                    // Use pointer's world coordinates directly for popup positioning
-                    const popupTargetX = pointer.worldX;
-                    const popupTargetY = pointer.worldY;
-                    console.log(`[Debug] Using pointer world coords for popup: X=${popupTargetX}, Y=${popupTargetY}`);
-
-                    if (this.actionPopup && this.actionPopup.getData('targetDisplay') === charDisplay) {
-                        console.log(`[Debug] Click ignored, popup already open for ${charData.name}`);
-                        return;
-                    }
-                    console.log('[Debug] Calling _hideActionPopup before showing new one.');
-                    this._hideActionPopup(); // Hide any existing popup first
-                    console.log('[Debug] Calling _handleInventoryClick.');
-                    // Pass the reliable pointer world coordinates
-                    this._handleInventoryClick(charData, charDisplay, popupTargetX, popupTargetY);
-
-                } else {
-                    console.log(`[Debug] Provided Local Coords Hit Test: FAILED (Click outside 0-${hitAreaWidth}, 0-${hitAreaHeight} local bounds)`);
-                    // If the hit test fails, do nothing, effectively ignoring the click
-                }
-            });
+            // REMOVED individual item listener
 
             // Add the display to the container
             this.inventoryContainer.add(charDisplay);
 
             maxContentHeight = Math.max(maxContentHeight, displayY + charDisplay.height); // Track content height
         });
+
+        // Set the container interactive over its full potential height
+        this.inventoryContainer.setInteractive(
+            new Phaser.Geom.Rectangle(0, 0, inventoryAreaWidth, maxContentHeight),
+            Phaser.Geom.Rectangle.Contains
+        );
+
+        // Add pointerdown listener to the container
+        this.inventoryContainer.on('pointerdown', (pointer, localX, localY, event) => {
+            console.log(`[Debug] inventoryContainer pointerdown: localX=${localX.toFixed(1)}, localY=${localY.toFixed(1)}`);
+
+            // Iterate through children to find which one was clicked
+            let clickedChild = null;
+            let clickedCharData = null;
+
+            for (const child of this.inventoryContainer.list) {
+                // Check if the click is within the child's 100x100 box area
+                // child.x/y are relative to the container
+                if (child instanceof MenuCharacterDisplay && // Ensure it's the correct type
+                    localX >= child.x && localX <= child.x + child.rectWidth &&
+                    localY >= child.y && localY <= child.y + child.rectHeight)
+                {
+                    clickedChild = child;
+                    clickedCharData = child.getData('characterData');
+                    console.log(`[Debug] Hit detected on child: ${clickedCharData.name} at child coords (${(localX - child.x).toFixed(1)}, ${(localY - child.y).toFixed(1)})`);
+                    break; // Found the clicked item
+                }
+            }
+
+            if (clickedChild && clickedCharData) {
+                // Use pointer's world coordinates for popup positioning
+                const popupTargetX = pointer.worldX;
+                const popupTargetY = pointer.worldY;
+
+                if (this.actionPopup && this.actionPopup.getData('targetDisplay') === clickedChild) {
+                    console.log(`[Debug] Click ignored, popup already open for ${clickedCharData.name}`);
+                    return;
+                }
+                console.log('[Debug] Calling _hideActionPopup before showing new one.');
+                this._hideActionPopup(); // Hide any existing popup first
+                console.log('[Debug] Calling _handleInventoryClick.');
+                this._handleInventoryClick(clickedCharData, clickedChild, popupTargetX, popupTargetY);
+
+            } else {
+                console.log('[Debug] Click detected on container, but not within any child bounds.');
+                // Optionally hide popup if clicking empty space within the container
+                // this._hideActionPopup();
+            }
+
+            // Note: We don't stop propagation here, allowing the global click listener
+            // to potentially hide the popup if the click was outside the popup itself.
+        });
+
 
         // Create a mask for the scrollable area
         const maskGraphics = this.make.graphics();
@@ -389,7 +408,7 @@ class PreBattleSetupScene extends Phaser.Scene {
         this._updateInventorySelectionVisuals();
     }
 
-    _handleInventoryClick(characterData, characterDisplay, clickX, clickY) {
+    _handleInventoryClick(characterData, MenuCharacterDisplay, clickX, clickY) {
         console.log(`[Debug] _handleInventoryClick called for: ${characterData.name}`); // <-- ADD LOG
         console.log('Clicked inventory character:', characterData.name);
         // Don't select if already in the team
@@ -398,16 +417,16 @@ class PreBattleSetupScene extends Phaser.Scene {
             console.log(`${characterData.name} is already in the team.`);
              // Allow inspect even if in team
              this.selectedInventoryCharacterData = characterData;
-             this.selectedInventoryDisplay = characterDisplay;
-             this._showActionPopup(characterData, characterDisplay, clickX, clickY, true); // Pass flag to only show inspect
+             this.selectedInventoryDisplay = MenuCharacterDisplay;
+             this._showActionPopup(characterData, MenuCharacterDisplay, clickX, clickY, true); // Pass flag to only show inspect
             return;
         }
 
         this.selectedInventoryCharacterData = characterData;
-        this.selectedInventoryDisplay = characterDisplay;
-        this._showActionPopup(characterData, characterDisplay, clickX, clickY);
+        this.selectedInventoryDisplay = MenuCharacterDisplay;
+        this._showActionPopup(characterData, MenuCharacterDisplay, clickX, clickY);
     }
-    _showActionPopup(characterData, characterDisplay, clickX, clickY, inspectOnly = false) {
+    _showActionPopup(characterData, MenuCharacterDisplay, clickX, clickY, inspectOnly = false) {
         console.log(`[Debug] _showActionPopup called for ${characterData.name}. inspectOnly=${inspectOnly}`); // <-- ADD LOG
         // this._hideActionPopup(); // Moved this call earlier to the click handler
 
@@ -430,7 +449,7 @@ class PreBattleSetupScene extends Phaser.Scene {
 
         // Create a container for the popup elements
         this.actionPopup = this.add.container(popupX, popupY);
-        this.actionPopup.setData('targetDisplay', characterDisplay); // Link popup to the display
+        this.actionPopup.setData('targetDisplay', MenuCharacterDisplay); // Link popup to the display
 
         // Background
         const background = this.add.graphics();
@@ -576,7 +595,7 @@ class PreBattleSetupScene extends Phaser.Scene {
         this.inventoryDisplays.forEach(invDisplay => {
             const charData = invDisplay.getData('characterData');
             const isInTeam = teamCharacterSet.has(charData);
-            // TODO: Add actual checkmark visual to CharacterDisplay class
+            // TODO: Add actual checkmark visual to MenuCharacterDisplay class
             // For now, just log
             if (isInTeam) {
                 console.log(`  - ${charData.name} is in team (should have checkmark)`);
