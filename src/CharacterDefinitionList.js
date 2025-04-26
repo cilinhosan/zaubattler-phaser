@@ -10,7 +10,7 @@ import { WerewolfDefinition } from './character_definitions/WerewolfDefinition.j
 
 // Re-export ELEMENTS from BaseDefinitions for convenience if needed elsewhere,
 // or components can import directly from BaseDefinitions.js
-export { ELEMENTS } from './character_definitions/BaseDefinitions.js';
+export { FACTION } from './character_definitions/BaseDefinitions.js';
 
 // Maps definition IDs to their corresponding classes
 export const characterDefinitionClasses = {

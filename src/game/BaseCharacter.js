@@ -19,7 +19,7 @@ export class BaseCharacter {
         this.definitionId = definitionId; // Store the ID used to create it (e.g., "katherine")
         this.name = definition.name;
         this.level = level;
-        this.element = definition.element;
+        this.faction = definition.faction;
 
         // Store base stats directly from definition - use spread for a shallow copy
         // These represent the character's stats at level 1, before any modifications.
@@ -60,11 +60,11 @@ export class BaseCharacter {
     }
 
     /**
-     * Gets the character's element.
-     * @returns {string} The element (e.g., 'Fire', 'Water'). See ELEMENTS in CharacterDefinitionList.
+     * Gets the character's faction.
+     * @returns {string} The faction (e.g., 'Crimson', 'Azure'). See FACTION in BaseDefinitions.js.
      */
-    getElement() {
-        return this.element;
+    getFaction() {
+        return this.faction;
     }
 
      /**

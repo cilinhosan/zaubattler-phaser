@@ -1,6 +1,6 @@
 import Phaser from "phaser";
 import battlesData from './game/battles.json'; // Import battle data
-import CharacterDisplay from './game/CharacterDisplay'; // Import CharacterDisplay class
+import CharacterBattleDisplay from './game/CharacterBattleDisplay'; // Import CharacterBattleDisplay class
 
 const MAX_SLOTS = 5; // Define max slots per team
 
@@ -40,7 +40,7 @@ class BattleScene extends Phaser.Scene {
         for (const char of this.allBattleCharacters) {
             // Determine the index within the specific team array
             const teamIndex = char.team === 'player' ? this.playerTeam.indexOf(char) : this.enemyTeam.indexOf(char);
-            const display = new CharacterDisplay(this, char, char.team, teamIndex);
+            const display = new CharacterBattleDisplay(this, char, char.team, teamIndex);
             char.display = display; // Assign the display back to the character
             if (char.isDefeated) {
                  display.hide(); // Hide if defeated

@@ -1,5 +1,5 @@
 // src/character_definitions/ElzetteDefinition.js
-import { CharacterDefinition, ELEMENTS } from './BaseDefinitions.js';
+import { CharacterDefinition, FACTION } from './BaseDefinitions.js';
 import * as SkillHelper from '../game/SkillHelper.js';
 
 export class ElzetteDefinition extends CharacterDefinition {
@@ -9,7 +9,7 @@ export class ElzetteDefinition extends CharacterDefinition {
             name: "Elzette", // Changed Name
             // Using Katherine's adjusted stats
             stats: { hp: 480, atk: 85, def: 35, critChance: 0.20, critDamage: 1.80 },
-            element: ELEMENTS.LIGHT, // Changed Element
+            faction: FACTION.LIGHT, // Changed Faction
             playableByPlayer: true, // Playable
             description: "A radiant warrior." // Adjusted description
         });
@@ -22,20 +22,20 @@ export class ElzetteDefinition extends CharacterDefinition {
         };
     }
 
-    // --- Skill Methods (Copy Katherine's logic, adjust element) ---
+    // --- Skill Methods (Copy Katherine's logic, adjust faction) ---
 
     skillLightBlast(caster, targetTeam, ownTeam) {
         const livingTargets = targetTeam.filter(t => t && !t.isDefeatedStatus());
         if (livingTargets.length > 0) {
             const target = livingTargets[Math.floor(Math.random() * livingTargets.length)];
-            SkillHelper.dealDamage(caster, target, 50, ELEMENTS.LIGHT); // Use LIGHT element
+            SkillHelper.dealDamage(caster, target, 50, FACTION.LIGHT); // Use LIGHT faction
         } else {
             console.log(`${caster.getName()} used Light Blast, but no targets were available.`);
         }
     }
 
     skillRadiantArea(caster, targetTeam, ownTeam) {
-        SkillHelper.dealDamageToAll(caster, targetTeam, 25, ELEMENTS.LIGHT); // Use LIGHT element
+        SkillHelper.dealDamageToAll(caster, targetTeam, 25, FACTION.LIGHT); // Use LIGHT faction
     }
 
     skillHeartOfLight(caster, targetTeam, ownTeam) {

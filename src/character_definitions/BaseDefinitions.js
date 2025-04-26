@@ -1,12 +1,12 @@
 // src/character_definitions/BaseDefinitions.js
 
 // Define Elements using a constant object
-export const ELEMENTS = Object.freeze({
+export const FACTION = Object.freeze({
     LIGHT: 'Light',
-    FIRE: 'Fire',
-    PLANT: 'Plant',
-    WATER: 'Water',
-    EARTH: 'Earth',
+    CRIMSON: 'Crimson',
+    EMERALD: 'Emerald',
+    AZURE: 'Azure',
+    SEPIA: 'Sepia',
     DARK: 'Dark',
     NEUTRAL: 'Neutral'
 });
@@ -16,9 +16,9 @@ export const ELEMENTS = Object.freeze({
  * Contains common properties and structure.
  */
 export class CharacterDefinition {
-    constructor({ id, name, stats, element, playableByPlayer = false, description = "" }) {
-        if (!id || !name || !stats || !element) {
-            throw new Error("Missing required fields for CharacterDefinition: id, name, stats, element");
+    constructor({ id, name, stats, faction, playableByPlayer = false, description = "" }) {
+        if (!id || !name || !stats || !faction) {
+            throw new Error("Missing required fields for CharacterDefinition: id, name, stats, faction");
         }
         this.id = id;
         this.name = name;
@@ -29,7 +29,7 @@ export class CharacterDefinition {
             critChance: stats.critChance ?? 0.05, // Default 5%
             critDamage: stats.critDamage ?? 1.5   // Default +50%
         };
-        this.element = element;
+        this.faction = faction;
         this.playableByPlayer = playableByPlayer;
         this.description = description;
 

@@ -1,5 +1,5 @@
 // src/character_definitions/WolfDefinition.js
-import { CharacterDefinition, ELEMENTS } from './BaseDefinitions.js';
+import { CharacterDefinition, FACTION } from './BaseDefinitions.js';
 import * as SkillHelper from '../game/SkillHelper.js';
 
 export class WolfDefinition extends CharacterDefinition {
@@ -9,7 +9,7 @@ export class WolfDefinition extends CharacterDefinition {
             name: "Wolf",
             // Adjusted stats closer to 500/70/30 baseline (more balanced)
             stats: { hp: 450, atk: 65, def: 25, critChance: 0.10, critDamage: 1.50 },
-            element: ELEMENTS.NEUTRAL,
+            faction: FACTION.NEUTRAL,
             playableByPlayer: false,
             description: "A wild wolf."
         });
@@ -23,7 +23,7 @@ export class WolfDefinition extends CharacterDefinition {
         const livingTargets = targetTeam.filter(t => t && !t.isDefeatedStatus());
         if (livingTargets.length > 0) {
             const target = livingTargets[Math.floor(Math.random() * livingTargets.length)];
-            SkillHelper.dealDamage(caster, target, 30, ELEMENTS.NEUTRAL); // Base damage 30
+            SkillHelper.dealDamage(caster, target, 30, FACTION.NEUTRAL); // Base damage 30
         } else {
             console.log(`${caster.getName()} used Bite, but no targets were available.`);
         }

@@ -1,5 +1,5 @@
 // src/character_definitions/KatherineDefinition.js
-import { CharacterDefinition, ELEMENTS } from './BaseDefinitions.js';
+import { CharacterDefinition, FACTION } from './BaseDefinitions.js';
 import * as SkillHelper from '../game/SkillHelper.js';
 
 export class KatherineDefinition extends CharacterDefinition {
@@ -9,15 +9,15 @@ export class KatherineDefinition extends CharacterDefinition {
             name: "Katherine",
             // Adjusted stats closer to 500/70/30 baseline
             stats: { hp: 480, atk: 85, def: 35, critChance: 0.20, critDamage: 1.80 },
-            element: ELEMENTS.FIRE,
+            faction: FACTION.CRIMSON,
             playableByPlayer: true,
             description: "A fiery warrior."
         });
 
         // Define skill metadata (name, description, type, cooldown, targetType)
         this.skillMetadata = {
-            skillFireBlast: { name: "Fire Blast", description: "Deals moderate Fire damage to a single enemy.", type: 'active', cooldown: 4, targetType: 'enemy' },
-            skillVolcanicArea: { name: "Volcanic Area", description: "Deals low Fire damage to all enemies.", type: 'active', cooldown: 4, targetType: 'allEnemies' },
+            skillFireBlast: { name: "Fire Blast", description: "Deals moderate damage to a single enemy.", type: 'active', cooldown: 4, targetType: 'enemy' },
+            skillVolcanicArea: { name: "Volcanic Area", description: "Deals low damage to all enemies.", type: 'active', cooldown: 4, targetType: 'allEnemies' },
             skillHeartOfFire: { name: "Heart of Fire", description: "Passive: Increases ATK.", type: 'passive', applyImmediately: true, modifiesStats: true },
             // skillFlameDeath: { name: "Flame Death", description: "...", type: 'active', cooldown: 5, targetType: 'enemy' }
         };
@@ -26,19 +26,21 @@ export class KatherineDefinition extends CharacterDefinition {
     // --- Skill Methods ---
     // These methods receive the caster (BattleCharacter) and target/team context.
 
-    skillFireBlast(caster, targetTeam, ownTeam) {
+    skillFireBlast(caster, targetTeam) {
         // Target a single random living enemy
+        let damageOutput = this.stats.atk * 2
         const livingTargets = targetTeam.filter(t => t && !t.isDefeatedStatus());
         if (livingTargets.length > 0) {
             const target = livingTargets[Math.floor(Math.random() * livingTargets.length)];
-            SkillHelper.dealDamage(caster, target, 50, ELEMENTS.FIRE); // Base damage 50
+            SkillHelper.dealDamage(caster, target, damageOutput); // Base damage 50
         } else {
             console.log(`${caster.getName()} used Fire Blast, but no targets were available.`);
         }
     }
 
-    skillVolcanicArea(caster, targetTeam, ownTeam) {
-        SkillHelper.dealDamageToAll(caster, targetTeam, 25, ELEMENTS.FIRE); // Base damage 25 to all
+    skillVolcanicArea(caster, targetTeam) {
+        let damageOutput = this.stats.atk * 1.2
+        SkillHelper.dealDamageToAll(caster, targetTeam, damageOutput);
     }
 
     skillHeartOfFire(caster, targetTeam, ownTeam) {
@@ -50,8 +52,4 @@ export class KatherineDefinition extends CharacterDefinition {
         // This logic might be better placed in BattleCharacter's applyPassiveEffects
         // triggered by the 'modifiesStats' flag.
     }
-
-    // skillFlameDeath(caster, targetTeam, ownTeam) {
-    //     // TODO: Implement Flame Death logic
-    // }
 }

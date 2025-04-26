@@ -1,5 +1,5 @@
 // src/character_definitions/WerewolfDefinition.js
-import { CharacterDefinition, ELEMENTS } from './BaseDefinitions.js';
+import { CharacterDefinition, FACTION } from './BaseDefinitions.js';
 import * as SkillHelper from '../game/SkillHelper.js';
 
 export class WerewolfDefinition extends CharacterDefinition {
@@ -9,7 +9,7 @@ export class WerewolfDefinition extends CharacterDefinition {
             name: "Werewolf",
             // Adjusted stats closer to 500/70/30 baseline (stronger)
             stats: { hp: 550, atk: 80, def: 40, critChance: 0.15, critDamage: 1.70 },
-            element: ELEMENTS.DARK,
+            faction: FACTION.DARK,
             playableByPlayer: false,
             description: "A fearsome werewolf."
         });
@@ -24,7 +24,7 @@ export class WerewolfDefinition extends CharacterDefinition {
         const livingTargets = targetTeam.filter(t => t && !t.isDefeatedStatus());
         if (livingTargets.length > 0) {
             const target = livingTargets[Math.floor(Math.random() * livingTargets.length)];
-            SkillHelper.dealDamage(caster, target, 80, ELEMENTS.NEUTRAL); // Base damage 80
+            SkillHelper.dealDamage(caster, target, 80, FACTION.NEUTRAL); // Base damage 80
         } else {
             console.log(`${caster.getName()} used Ravage, but no targets were available.`);
         }

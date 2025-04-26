@@ -153,7 +153,7 @@ class PreBattleSetupScene extends Phaser.Scene {
         // Display info available on BaseCharacter, suitable for both MenuCharacter and BattleCharacter
         // Use base stats as current battle stats (hp, atk, def) might not be relevant/available here
         // especially if the player team consists of MenuCharacters.
-        const info = `Name: ${character.getName()}\nLevel: ${character.getLevel()}\nElement: ${character.getElement() || 'N/A'}\nBase HP: ${character.getBaseStat('hp')}\nBase ATK: ${character.getBaseStat('atk')}\nBase DEF: ${character.getBaseStat('def')}`;
+        const info = `Name: ${character.getName()}\nLevel: ${character.getLevel()}\nFaction: ${character.getFaction() || 'N/A'}\nBase HP: ${character.getBaseStat('hp')}\nBase ATK: ${character.getBaseStat('atk')}\nBase DEF: ${character.getBaseStat('def')}`;
         this.characterInfoText.setText(info);
 
         const infoBounds = this.characterInfoText.getBounds();
