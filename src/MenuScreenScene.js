@@ -50,7 +50,7 @@ class MenuScreenScene extends Phaser.Scene {
             // --- Create Starting Inventory ---
             const playerInventory = [];
             const katherineDefinitionId = 'katherine'; // Assuming 'katherine' is the definition ID
-            for (let i = 0; i < 3; i++) {
+            for (let i = 0; i < 20; i++) {
                 // Create a new MenuCharacter instance for each Katherine
                 // Assign a unique ID if MenuCharacter requires/supports it, otherwise definitionId might suffice
                 // For now, assuming MenuCharacter constructor takes definitionId and level
