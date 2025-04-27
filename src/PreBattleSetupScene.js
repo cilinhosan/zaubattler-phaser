@@ -485,16 +485,19 @@ class PreBattleSetupScene extends Phaser.Scene {
         const isInTeam = this.playerTeamDisplays.some(displayObj => displayObj && displayObj.data === characterData);
         console.log(`[Debug _showActionPopup] Is ${characterData.name} in team? ${isInTeam}`);
 
-        // Always show Move and Inspect for now, but Move's action changes
-        const showMove = true; // Always show move option
-        const buttonHeight = 35;
-        const padding = 10;
-
-        let popupWidth = 100;
-        let popupHeight = padding + buttonHeight + padding; // Height for Inspect button
+        // Determine button configuration
+        const showMove = true; // Always show move option for now
+        const buttonsToShow = [];
         if (showMove) {
-            popupHeight += buttonHeight + padding; // Add height for Move button
+            buttonsToShow.push({ text: 'Move', color: '#0f0', action: 'move' });
         }
+        buttonsToShow.push({ text: 'Inspect', color: '#ff0', action: 'inspect' });
+
+        const numberOfButtons = buttonsToShow.length;
+        const popupWidth = 100; // Keep fixed width for now
+        // Calculate height based *only* on buttons filling the space
+        const calculatedButtonHeight = 40; // Fixed height per button for simplicity
+        const popupHeight = numberOfButtons * calculatedButtonHeight;
         // Position popup near the click, adjusting if near edge
         const targetPopupX = clickX + 10;
         const targetPopupY = clickY + 10;
@@ -511,10 +514,11 @@ class PreBattleSetupScene extends Phaser.Scene {
 
         // Background
         const background = this.add.graphics();
+        // Use the height calculated based on the number of buttons
         background.fillStyle(0x222222, 0.9);
-        background.fillRect(0, 0, popupWidth, popupHeight);
+        background.fillRect(0, 0, popupWidth, popupHeight); // Use calculated popupHeight
         background.lineStyle(1, 0xffffff, 1);
-        background.strokeRect(0, 0, popupWidth, popupHeight);
+        background.strokeRect(0, 0, popupWidth, popupHeight); // Use calculated popupHeight
         this.actionPopup.add(background);
 
         // Make background interactive to catch clicks within the popup area
@@ -525,60 +529,55 @@ class PreBattleSetupScene extends Phaser.Scene {
         });
 
 
-        let currentY = padding;
+        // Create buttons dynamically
+        let currentY = 0; // Start buttons from the top
 
-        // Move Button (conditionally shown)
-        if (showMove) {
-            console.log('[Debug] Adding "Move" button.'); // <-- ADD LOG
-            const moveButton = this.add.text(padding, currentY, 'Move', { fontSize: '18px', fill: '#0f0' })
+        buttonsToShow.forEach(buttonInfo => {
+            const buttonY = currentY;
+            const buttonHeight = calculatedButtonHeight; // Use calculated height
+
+            console.log(`[Debug] Adding "${buttonInfo.text}" button.`);
+
+            // Button Background Rectangle (Interactive Area)
+            const buttonBg = this.add.rectangle(0, buttonY, popupWidth, buttonHeight, 0x333333)
+                .setOrigin(0, 0)
                 .setInteractive();
-            // The event object is the last argument for GameObject pointerdown
-            moveButton.on('pointerdown', (pointer, localX, localY, event) => {
-                console.log('[Debug] Move button clicked.');
-                event.stopPropagation(); // Prevent click from bubbling further
+            this.actionPopup.add(buttonBg);
+
+            // Button Text (Visual Only)
+            const buttonText = this.add.text(popupWidth / 2, buttonY + buttonHeight / 2, buttonInfo.text, { fontSize: '18px', fill: buttonInfo.color })
+                .setOrigin(0.5, 0.5);
+            this.actionPopup.add(buttonText);
+
+            // Add listener to the background rectangle
+            buttonBg.on('pointerdown', (pointer, localX, localY, event) => {
+                console.log(`[Debug] ${buttonInfo.text} button clicked.`);
+                event.stopPropagation(); // IMPORTANT: Stop click from reaching elements below popup
 
                 // Hide the popup FIRST
                 this._hideActionPopup();
-                // REMOVED: Flag logic
 
-
-                // Then perform the action
-                if (isInTeam) {
-                    console.log(`[Debug] Calling _handleMoveFromTeamClick for ${characterData.name}`);
-                    this._handleMoveFromTeamClick(characterData);
-                } else {
-                    console.log(`[Debug] Calling _handleMoveToTeamClick for ${characterData.name}`);
-                    this._handleMoveToTeamClick(characterData, inventoryDisplay);
+                // Perform the action based on buttonInfo
+                if (buttonInfo.action === 'move') {
+                    if (isInTeam) {
+                        console.log(`[Debug] Calling _handleMoveFromTeamClick for ${characterData.name}`);
+                        this._handleMoveFromTeamClick(characterData);
+                    } else {
+                        console.log(`[Debug] Calling _handleMoveToTeamClick for ${characterData.name}`);
+                        this._handleMoveToTeamClick(characterData, inventoryDisplay);
+                    }
+                } else if (buttonInfo.action === 'inspect') {
+                    console.log(`[Debug] Calling _handleInspectClick for ${characterData.name}`);
+                    this._handleInspectClick(characterData);
                 }
-                // Note: _hideActionPopup is now called above, removed from move handlers
             });
-            this.actionPopup.add(moveButton);
-            currentY += buttonHeight + padding;
-        } else {
-            console.log('[Debug] Skipping "Move" button (inspectOnly=true or showMove=false).'); // <-- ADD LOG
-        }
 
-        // Inspect Button
-        console.log('[Debug] Adding "Inspect" button.'); // <-- ADD LOG
-        const inspectButton = this.add.text(padding, currentY, 'Inspect', { fontSize: '18px', fill: '#ff0' })
-            .setInteractive();
-        // The event object is the last argument for GameObject pointerdown
-        inspectButton.on('pointerdown', (pointer, localX, localY, event) => {
-             console.log('[Debug] Inspect button clicked.');
-             event.stopPropagation(); // Prevent click from bubbling further
-
-             // Hide the popup FIRST
-             this._hideActionPopup();
-             // REMOVED: Flag logic
-
-             // Then perform the action
-             this._handleInspectClick(characterData);
-             // Note: _hideActionPopup is now called above, removed from inspect handler
+            currentY += buttonHeight; // Move Y position for the next button
         });
-        this.actionPopup.add(inspectButton);
+
 
         // Bring popup to top
-        this.actionPopup.setDepth(10);
+        this.actionPopup.setDepth(10); // Ensure popup is above other UI
     }
 
     _hideActionPopup() {
