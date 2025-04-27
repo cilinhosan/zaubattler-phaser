@@ -14,6 +14,7 @@ class PreBattleSetupScene extends Phaser.Scene {
         super({ key: 'PreBattleSetupScene' });
         this.enemyDisplayGroup = null; // To hold enemy display objects
         this.currentEnemyTeam = []; // To hold the loaded enemy BattleCharacter instances
+        this.battleTitleText = null; // To hold the centered battle title text
     }
 
     // init(data) removed - battleIndex is now managed globally
@@ -93,7 +94,7 @@ class PreBattleSetupScene extends Phaser.Scene {
         // --- New Layout Setup (Player Side) ---
 
         // Player Team Slots (Mid-Top Left)
-        this.playerTeamTitle = this.add.text(200, 150, 'Your Team', { fontSize: '48px', fill: '#fff' }); // Store reference if needed later
+        this.playerTeamTitle = this.add.text(350, 150, 'Your Team', { fontSize: '48px', fill: '#fff' }); // Store reference if needed later
         this.playerTeamSlots = []; // Array to hold slot graphics/containers
         this.playerTeamDisplays = []; // Array to hold character display objects in slots
         const playerSlotPositions = [
@@ -781,7 +782,11 @@ class PreBattleSetupScene extends Phaser.Scene {
     _loadAndDisplayBattleData(battleIndex) {
         console.log(`PreBattleSetupScene: Loading data for battle index ${battleIndex}`);
 
-        // --- Destroy Previous Enemy Visuals and Group ---
+        // --- Destroy Previous Battle Title and Enemy Visuals/Group ---
+        if (this.battleTitleText) {
+            this.battleTitleText.destroy();
+            this.battleTitleText = null;
+        }
         if (this.enemyDisplayGroup) {
             console.log("Destroying existing enemyDisplayGroup.");
             this.enemyDisplayGroup.destroy(true); // Destroy the group and its children
@@ -798,6 +803,15 @@ class PreBattleSetupScene extends Phaser.Scene {
             return;
         }
         const currentBattle = battlesData[battleIndex];
+
+        // --- Display Centered Battle Title ---
+        const titleStyle = { fontSize: '64px', fill: '#fff', align: 'center' };
+        this.battleTitleText = this.add.text(
+            this.cameras.main.width / 2,
+            50, // Position near the top
+            `Battle ${currentBattle.battleId}`,
+            titleStyle
+        ).setOrigin(0.5);
 
         // --- Create Enemy Team using BattleCharacter and Definitions ---
         console.log(`Creating enemies for Battle Index: ${battleIndex}, Battle ID: ${currentBattle.battleId}`);
@@ -816,7 +830,7 @@ class PreBattleSetupScene extends Phaser.Scene {
 
         // --- Display Enemy Team ---
         // Store title reference if we need to update it later
-        this.enemyTeamTitle = this.add.text(1200, 150, `Enemy Team (Battle ${currentBattle.battleId})`, { fontSize: '48px', fill: '#fff' });
+        this.enemyTeamTitle = this.add.text(1450, 150, `Enemy Team`, { fontSize: '48px', fill: '#fff' }).setOrigin(0.5, 0); // Centered above enemy slots
         this.enemyDisplayGroup.add(this.enemyTeamTitle); // Add title to the group
 
         const enemySlotPositions = [

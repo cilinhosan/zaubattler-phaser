@@ -1,18 +1,6 @@
 import Phaser from 'phaser';
 
-const MAX_SLOTS = 5;
-const BOX_WIDTH = 150;
-const BOX_HEIGHT = 180;
-const PADDING = 60; // Increased by half (40 + 40/2)
-
-const PLAYER_START_X = 300;
-const PLAYER_START_Y = 400;
-
-const ENEMY_START_X = 1400; // Adjusted for 1080p
-const ENEMY_START_Y = 400; // Adjusted for 1080p
-
-const HP_BAR_HEIGHT = 10;
-const HP_BAR_Y_OFFSET = 12.5; // Decreased by half (25 / 2)
+// Unused constants removed
 
 class MenuCharacterDisplay extends Phaser.GameObjects.Container { // Inherit from Container
     constructor(scene, x, y, character) {
@@ -31,7 +19,7 @@ class MenuCharacterDisplay extends Phaser.GameObjects.Container { // Inherit fro
         this.createDisplayElements();
 
         // Add the container itself to the scene (important!)
-        // scene.add.existing(this); // This is handled in PreBattleSetupScene now
+        // scene.add.existing(this) is handled by the parent container/scene
     }
 
     createDisplayElements() {
@@ -76,161 +64,42 @@ class MenuCharacterDisplay extends Phaser.GameObjects.Container { // Inherit fro
         }).setOrigin(0.5, 0); // Origin at top-center
         this.add(this.text); // Add text to the container
 
-        // Remove HP bar and HP text for inventory display (or make conditional)
-        // this.hpBar = ...
-        // this.hpText = ...
-        // this.add(this.hpBar);
-        // this.add(this.hpText);
+        // HP bar/text removed as they are not used in menu display
 
-        // Adjust container size based on content if needed, or use fixed size
-        // For interaction, set the container's hit area
+        // Adjust container size based on content
         const textHeight = this.text.getBounds().height;
         // Set container size to include the box and the text below it
-        this.setSize(this.rectWidth, this.rectHeight + 5 + textHeight); // Keep container size calculation for layout
-        // Make the container interactive using ONLY the box dimensions for now
-        // Set interactive area to match the 100x100 box drawn at local (0,0)
-        console.log(`[Debug MenuCharacterDisplay] Setting interactive hit area: 0, 0, ${this.rectWidth}, ${this.rectHeight}`);
-        // this.setInteractive(new Phaser.Geom.Rectangle(0, 0, this.rectWidth, this.rectHeight), Phaser.Geom.Rectangle.Contains); // REMOVED - Interaction handled by parent container
+        this.setSize(this.rectWidth, this.rectHeight + 5 + textHeight);
 
-
-        // Remove direct assignment to character object - keep display separate
-        // this.character.graphics = this.graphics;
-        // ...
+        // Interaction is handled by the parent container (inventoryContainer in PreBattleSetupScene)
+        // No need to setInteractive here directly
     }
 
-    updateHpDisplay() {
-        // Add checks for isDestroyed flag and validity of hpBar/hpText
-        if (this.isDestroyed || !this.graphics || this.graphics.destroyed || !this.hpBar || this.hpBar.destroyed || !this.hpText || !this.hpText.scene) {
-             // console.warn("updateHpDisplay called on destroyed or invalid display for:", this.character?.name);
-             return;
-        }
-        if (typeof this.character.getCurrentHp !== 'function' || typeof this.character.getMaxHp !== 'function') {
-             console.warn("Character object missing HP methods for:", this.character?.name);
-             return;
-        }
+    // updateHpDisplay method removed - not used in menu context
 
-        const currentHp = this.character.getCurrentHp();
-        const maxHp = this.character.getMaxHp();
-        const hpPercentage = maxHp > 0 ? Math.max(0, currentHp / maxHp) : 0; // Avoid division by zero
-        const hpBarWidth = this.rectWidth * hpPercentage;
+    // shake method removed - battle feedback not needed here
 
-        this.hpBar.clear();
-        this.hpBar.fillStyle(0x00ff00, 1);
-        this.hpBar.fillRect(this.rectX, this.rectY + this.rectHeight + HP_BAR_Y_OFFSET, hpBarWidth, HP_BAR_HEIGHT);
+    // highlightBorder method removed - not used
 
-        this.hpText.setText(`${currentHp}/${maxHp}`);
-        this.hpText.setPosition(this.rectX + this.rectWidth / 2, this.rectY + this.rectHeight + HP_BAR_Y_OFFSET + HP_BAR_HEIGHT / 2);
+    // clearHighlight method removed - not used
+
+    // hide method removed - visibility handled by parent/scene logic if needed
+
+    // show method removed - visibility handled by parent/scene logic if needed
+
+    // Override destroy to ensure proper cleanup when removed from team slot or scene changes
+    destroy(fromScene) {
+        // Destroy children managed by this container
+        // The graphics and text objects added via this.add() are automatically managed
+
+        // Call the parent Container's destroy method
+        super.destroy(fromScene);
     }
 
-    shake() {
-        if (!this.graphics || this.graphics.isDestroyed) return;
+    // resetDisplay method removed - not used
 
-        const originalGraphicsX = this.graphics.x;
-        const originalBorderColor = 0xffffff;
-        const hitBorderColor = 0xff0000;
-        const borderThickness = 2;
+    // showDefeated method removed - battle state not relevant here
 
-        // Change border to red immediately
-        this.highlightBorder(hitBorderColor, borderThickness); // Call with correct parameters
-
-        this.scene.tweens.add({
-            targets: this.graphics,
-            x: { from: originalGraphicsX, to: originalGraphicsX + 10 },
-            ease: 'Sine.easeInOut',
-            duration: 50,
-            repeat: 3,
-            yoyo: true,
-            onComplete: () => {
-                // Reset position and border color after shake
-                if (this.graphics && !this.graphics.isDestroyed) {
-                    this.graphics.x = originalGraphicsX;
-                    // Put back the border reset to default white
-                    this.highlightBorder(originalBorderColor, borderThickness);
-                }
-            }
-        });
-
-        if (this.text && this.text.scene) {
-            const originalTextX = this.text.x;
-            this.scene.tweens.add({
-                targets: this.text,
-                x: { from: originalTextX, to: originalTextX + 10 },
-                ease: 'Sine.easeInOut',
-                duration: 50,
-                repeat: 3,
-                yoyo: true,
-                onComplete: () => {
-                    if (this.text && this.text.scene) {
-                        this.text.x = originalTextX;
-                    }
-                }
-            });
-        }
-    }
-
-    // Modified highlightBorder to operate on this.graphics
-    highlightBorder(color, thickness = 2) {
-        if (!this.graphics || this.graphics.isDestroyed) return;
-        this.graphics.clear();
-        this.graphics.lineStyle(thickness, color, 1);
-        this.graphics.strokeRect(0, 0, this.rectWidth, this.rectHeight);
-    }
-
-    // New method to clear the highlight and revert to default border
-    clearHighlight() {
-        this.highlightBorder(0xffffff, 2); // Revert to default white border with thickness 2
-    }
-
-    // New method to hide display elements
-    hide() {
-        if (this.graphics && !this.graphics.isDestroyed) this.graphics.setVisible(false);
-        if (this.text && this.text.scene) this.text.setVisible(false);
-        if (this.hpBar && !this.hpBar.isDestroyed) this.hpBar.setVisible(false);
-        if (this.hpText && this.hpText.scene) this.hpText.setVisible(false);
-    }
-
-    // New method to show display elements
-    show() {
-        if (this.graphics && !this.graphics.isDestroyed) this.graphics.setVisible(true);
-        if (this.text && this.text.scene) this.text.setVisible(true);
-        if (this.hpBar && !this.hpBar.isDestroyed) this.hpBar.setVisible(true);
-        if (this.hpText && this.hpText.scene) this.hpText.setVisible(true);
-    }
-
-
-    destroy() {
-        if (this.graphics && !this.graphics.isDestroyed) this.graphics.destroy();
-        if (this.text && this.text.scene) this.text.destroy();
-        if (this.hpBar && !this.hpBar.isDestroyed) this.hpBar.destroy();
-        if (this.hpText && this.hpText.scene) this.hpText.destroy();
-        this.isDestroyed = true; // Add a flag to prevent errors after destruction
-    }
-
-    // Method to reset the display state (e.g., after being defeated or for a new battle)
-    resetDisplay() {
-        if (this.isDestroyed) return; // Don't reset if already destroyed
-
-        // Make elements visible again (in case they were hidden by defeat)
-        this.show();
-
-        // Reset border highlight to default
-        this.clearHighlight();
-
-        // Update HP display to reflect potentially reset character stats
-        this.updateHpDisplay();
-    }
-
-    // Add showDefeated method (called from BattleCharacter)
-    showDefeated() {
-        if (this.isDestroyed) return;
-        // Example: Make the display semi-transparent or apply a grayscale filter
-        if (this.graphics) this.graphics.setAlpha(0.5);
-        if (this.text) this.text.setAlpha(0.5);
-        if (this.hpBar) this.hpBar.setAlpha(0.5);
-        if (this.hpText) this.hpText.setAlpha(0.5);
-        // Optionally hide completely after an animation
-        // this.hide();
-    }
-}
+} // End of class MenuCharacterDisplay
 
 export default MenuCharacterDisplay;
