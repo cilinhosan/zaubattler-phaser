@@ -12,12 +12,11 @@ import GameDataManager from './game/GameDataManager.js'; // Import the GameDataM
 class PreBattleSetupScene extends Phaser.Scene {
     constructor() {
         super({ key: 'PreBattleSetupScene' });
+        this.enemyDisplayGroup = null; // To hold enemy display objects
+        this.currentEnemyTeam = []; // To hold the loaded enemy BattleCharacter instances
     }
 
-    init(data) {
-        // Store battle index. Team and inventory are fetched from GameDataManager.
-        this.battleIndex = data.battleIndex || 0;
-    }
+    // init(data) removed - battleIndex is now managed globally
 
     preload() {
         // --- Load Default Icons ---
@@ -77,57 +76,24 @@ class PreBattleSetupScene extends Phaser.Scene {
         // If enemies need specific icons later, similar logic would apply to enemyTeam data.
     }
 
-    create(data) {
+    create() { // Removed 'data' parameter
         // this.add.image(400, 300, 'background'); // Add background if you have one
 
-        // Use data stored in init()
         // Get current team slots and inventory from the GameDataManager
         const playerTeamSlotsData = GameDataManager.getTeamSlots(); // Array with character data or nulls
         const playerInventory = GameDataManager.getInventory();
-        const battleIndex = this.battleIndex;
+        const battleIndex = GameDataManager.getCurrentBattleIndex(); // Get index from manager
 
-        // --- Load Enemy Team based on battleIndex ---
-        if (battleIndex >= battlesData.length) {
-            console.error(`Invalid battleIndex: ${battleIndex}. No more battles defined.`);
-            // Optionally, transition to an error scene or back to menu
-            this.scene.start('MenuScreenScene');
-            return;
-        }
+        // Initialize the group to hold enemy display objects
+        this.enemyDisplayGroup = this.add.group();
 
-        const currentBattle = battlesData[battleIndex];
+        // --- Load and Display Initial Battle Data ---
+        this._loadAndDisplayBattleData(battleIndex);
 
-        // --- Create Enemy Team using BattleCharacter and Definitions ---
-        console.log(`Creating enemies for Battle Index: ${battleIndex}, Battle ID: ${currentBattle.battleId}`);
-        const enemyTeam = currentBattle.enemies.map((enemyConfig, index) => {
-            console.log(`Processing enemy config:`, enemyConfig);
-            const definitionId = enemyConfig.type.toLowerCase(); // Assuming type matches definition ID
-            console.log(`Attempting to get definition for ID: ${definitionId}`);
-            const definition = getCharacterDefinition(definitionId);
-
-            if (!definition) {
-                console.error(`Character definition not found for enemy type: ${enemyConfig.type}. Skipping enemy.`);
-                // Consider adding a placeholder 'Unknown Enemy' BattleCharacter
-                return null; // Skip this enemy if definition is missing
-            }
-
-            // Create BattleCharacter instance using the definition ID
-            // Level and team are set here. Skills and passives are handled by the constructor.
-            console.log(`Definition found for ${definitionId}. Creating BattleCharacter...`);
-            const battleCharacter = new BattleCharacter(definitionId, 1, 'enemy'); // Level 1, enemy team
-            console.log(`Created BattleCharacter: ${battleCharacter.getName()}`);
-
-            // TODO: Potentially assign unique IDs or modify names if needed (e.g., "Goblin A", "Goblin B")
-            // battleCharacter.name = `${definition.name} ${index + 1}`; // Example: Rename to Goblin 1, Goblin 2
-
-            return battleCharacter;
-        }).filter(character => character !== null); // Filter out any nulls from missing definitions
-        // --- End Load Enemy Team ---
-
-
-        // --- New Layout Setup ---
+        // --- New Layout Setup (Player Side) ---
 
         // Player Team Slots (Mid-Top Left)
-        this.add.text(200, 150, 'Your Team', { fontSize: '48px', fill: '#fff' });
+        this.playerTeamTitle = this.add.text(200, 150, 'Your Team', { fontSize: '48px', fill: '#fff' }); // Store reference if needed later
         this.playerTeamSlots = []; // Array to hold slot graphics/containers
         this.playerTeamDisplays = []; // Array to hold character display objects in slots
         const playerSlotPositions = [
@@ -151,29 +117,6 @@ class PreBattleSetupScene extends Phaser.Scene {
             this.playerTeamDisplays.push(null); // Initialize display array with null
         });
         // Player team slots created
-
-        // Enemy Team Display (Mid-Top Right)
-        this.add.text(1200, 150, `Enemy Team (Battle ${currentBattle.battleId})`, { fontSize: '48px', fill: '#fff' });
-        const enemySlotPositions = [
-            { x: 1200, y: 250 },
-            { x: 1350, y: 250 },
-            { x: 1500, y: 250 },
-             // Add more slots if needed
-        ];
-     enemyTeam.forEach((character, index) => {
-        if (index < enemySlotPositions.length && character) {
-            const pos = enemySlotPositions[index];
-            // Use enemy icon
-            const enemyIcon = this.add.image(pos.x, pos.y, 'enemy_icon');
-            enemyIcon.setDisplaySize(99, 99); // Resize the icon to fill the 100x100 slot
-            // REMOVED duplicate setDisplaySize call
-            // Optional: Add name text below icon
-            this.add.text(pos.x, pos.y + 60, character.name, { fontSize: '16px', fill: '#fff', align: 'center' }).setOrigin(0.5);
-            // Keep the red box for now, or remove if icon is sufficient
-             this.add.rectangle(pos.x, pos.y, 100, 100).setStrokeStyle(2, 0xff0000);
-        }
-    });
-
 
         // --- Scrollable Player Inventory ---
         const inventoryTitleText = this.add.text(this.cameras.main.width / 2, 450, 'Member Reserve', { fontSize: '32px', fill: '#fff' }).setOrigin(0.5);
@@ -383,10 +326,13 @@ class PreBattleSetupScene extends Phaser.Scene {
 
 
             console.log("Starting Battle with Player Team:", playerBattleTeam.map(c => c.name));
-            console.log("Enemy Team:", enemyTeam.map(c => c.name));
+            console.log("Enemy Team:", this.currentEnemyTeam ? this.currentEnemyTeam.map(c => c.name) : 'Not loaded'); // Use stored enemy team safely
 
-            // Start BattleScene - It will get the team from GameDataManager
-            this.scene.start('BattleScene', { battleIndex });
+            // Get the *current* battle index when starting
+            const currentBattleIndex = GameDataManager.getCurrentBattleIndex();
+
+            // Start BattleScene - Pass the current battle index
+            this.scene.start('BattleScene', { battleIndex: currentBattleIndex }); // Pass index correctly
         });
 
         // Add a global click listener to hide the popup if clicking outside
@@ -421,6 +367,22 @@ class PreBattleSetupScene extends Phaser.Scene {
         });
 
     } // End of create()
+
+    /**
+     * Called when returning to this scene to load the next battle's data.
+     */
+    updateBattleData() {
+        console.log("PreBattleSetupScene: Updating battle data...");
+        const battleIndex = GameDataManager.getCurrentBattleIndex();
+        this._loadAndDisplayBattleData(battleIndex);
+        // Refresh inventory visuals in case team status changed implicitly (though unlikely here)
+        this._updateInventorySelectionVisuals();
+        // Reset any interaction states
+        this._hideActionPopup();
+        this.isMovingState = false;
+        this.selectedInventoryCharacterData = null;
+        this.selectedInventoryDisplay = null;
+    }
 
     // Removed displayCharacterInfo as it's replaced by the new interaction model
 
@@ -811,6 +773,75 @@ class PreBattleSetupScene extends Phaser.Scene {
             const errorText = this.add.text(slot.x, slot.y, '?', { fontSize: '40px', fill: '#f00' }).setOrigin(0.5);
             this.playerTeamDisplays[slotIndex] = { icon: errorText, data: characterData }; // Store text as 'icon' for cleanup
         }
+    }
+/**
+     * Loads enemy data for the given battle index and updates the display.
+     * @param {number} battleIndex - The index of the battle to load from battles.json.
+     */
+    _loadAndDisplayBattleData(battleIndex) {
+        console.log(`PreBattleSetupScene: Loading data for battle index ${battleIndex}`);
+
+        // --- Destroy Previous Enemy Visuals and Group ---
+        if (this.enemyDisplayGroup) {
+            console.log("Destroying existing enemyDisplayGroup.");
+            this.enemyDisplayGroup.destroy(true); // Destroy the group and its children
+        }
+        // Always create a new group for the current battle's display objects
+        this.enemyDisplayGroup = this.add.group();
+        console.log("Created new enemyDisplayGroup.");
+
+        // --- Load Battle Data ---
+        if (battleIndex >= battlesData.length) {
+            console.error(`Invalid battleIndex: ${battleIndex}. No more battles defined.`);
+            // TODO: Handle end of battles - maybe transition to EndGameScene?
+            this.scene.start('MenuScreenScene'); // Go back to menu for now
+            return;
+        }
+        const currentBattle = battlesData[battleIndex];
+
+        // --- Create Enemy Team using BattleCharacter and Definitions ---
+        console.log(`Creating enemies for Battle Index: ${battleIndex}, Battle ID: ${currentBattle.battleId}`);
+        this.currentEnemyTeam = currentBattle.enemies.map((enemyConfig, index) => {
+            const definitionId = enemyConfig.type.toLowerCase();
+            const definition = getCharacterDefinition(definitionId);
+            if (!definition) {
+                console.error(`Character definition not found for enemy type: ${enemyConfig.type}. Skipping enemy.`);
+                return null;
+            }
+            const battleCharacter = new BattleCharacter(definitionId, 1, 'enemy');
+            console.log(`Created BattleCharacter: ${battleCharacter.getName()}`);
+            // TODO: Assign unique IDs if needed
+            return battleCharacter;
+        }).filter(character => character !== null);
+
+        // --- Display Enemy Team ---
+        // Store title reference if we need to update it later
+        this.enemyTeamTitle = this.add.text(1200, 150, `Enemy Team (Battle ${currentBattle.battleId})`, { fontSize: '48px', fill: '#fff' });
+        this.enemyDisplayGroup.add(this.enemyTeamTitle); // Add title to the group
+
+        const enemySlotPositions = [
+            { x: 1200, y: 250 },
+            { x: 1350, y: 250 },
+            { x: 1500, y: 250 },
+            // Add more slots if needed
+        ];
+
+        this.currentEnemyTeam.forEach((character, index) => {
+            if (index < enemySlotPositions.length && character) {
+                const pos = enemySlotPositions[index];
+                // Use enemy icon
+                const enemyIcon = this.add.image(pos.x, pos.y, 'enemy_icon');
+                enemyIcon.setDisplaySize(99, 99);
+                // Optional: Add name text below icon
+                const enemyNameText = this.add.text(pos.x, pos.y + 60, character.name, { fontSize: '16px', fill: '#fff', align: 'center' }).setOrigin(0.5);
+                // Keep the red box for now, or remove if icon is sufficient
+                const enemySlotRect = this.add.rectangle(pos.x, pos.y, 100, 100).setStrokeStyle(2, 0xff0000);
+
+                // Add all created display objects to the group
+                this.enemyDisplayGroup.addMultiple([enemyIcon, enemyNameText, enemySlotRect]);
+            }
+        });
+        console.log(`PreBattleSetupScene: Display updated for battle index ${battleIndex}`);
     }
 
 

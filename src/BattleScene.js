@@ -348,8 +348,22 @@ class BattleScene extends Phaser.Scene {
                     });
                     // --- End Reset Player HP ---
 
-                    // Pass only the next battle index. PreBattleSetupScene will get team from GameDataManager.
-                    this.scene.start('PreBattleSetupScene', { battleIndex: nextBattleIndex });
+                    // Increment the global battle index
+                    GameDataManager.incrementBattleIndex();
+
+                    // Get the existing PreBattleSetupScene instance
+                    const preBattleScene = this.scene.get('PreBattleSetupScene');
+
+                    if (preBattleScene && preBattleScene.updateBattleData) {
+                        // Call the update method on the existing scene
+                        preBattleScene.updateBattleData();
+                        // Switch back to the existing scene instance
+                        this.scene.switch('PreBattleSetupScene');
+                    } else {
+                        console.error("Could not find existing PreBattleSetupScene or its updateBattleData method. Restarting scene.");
+                        // Fallback: Start a new scene if switching fails (shouldn't happen ideally)
+                        this.scene.start('PreBattleSetupScene'); // No data needed
+                    }
                 }, [], this);
             } else {
                 // All battles completed

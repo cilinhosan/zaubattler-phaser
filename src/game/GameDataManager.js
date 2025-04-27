@@ -10,6 +10,7 @@ class GameDataManager {
         this.inventory = []; // Array holding MenuCharacter data objects
         // Array representing 5 team slots, holding references to inventory character objects or null
         this.teamSlots = [null, null, null, null, null];
+        this.currentBattleIndex = 0; // Track the current battle
         GameDataManager.instance = this;
         console.log("GameDataManager initialized.");
     }
@@ -113,14 +114,26 @@ class GameDataManager {
         return this.teamSlots.some(slotChar => slotChar && slotChar.id === characterData.id);
     }
 
+    // --- Battle Index Methods ---
+
+    getCurrentBattleIndex() {
+        return this.currentBattleIndex;
+    }
+
+    incrementBattleIndex() {
+        this.currentBattleIndex++;
+        console.log(`GameDataManager: Battle index incremented to ${this.currentBattleIndex}`);
+    }
+
     /**
-     * Resets the inventory and team slots to their initial empty state.
-     * Should be called when returning to the main menu after a game ends.
+     * Resets the inventory, team slots, and battle index to their initial state.
+     * Should be called when starting a new game or returning to the main menu.
      */
     reset() {
         this.inventory = [];
         this.teamSlots = [null, null, null, null, null];
-        console.log("GameDataManager: State reset (inventory and team cleared).");
+        this.currentBattleIndex = 0; // Reset battle index as well
+        console.log("GameDataManager: State reset (inventory, team, and battle index cleared).");
     }
 }
 
