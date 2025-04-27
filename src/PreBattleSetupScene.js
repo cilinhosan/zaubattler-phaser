@@ -165,8 +165,8 @@ class PreBattleSetupScene extends Phaser.Scene {
             const pos = enemySlotPositions[index];
             // Use enemy icon
             const enemyIcon = this.add.image(pos.x, pos.y, 'enemy_icon');
-            enemyIcon.setDisplaySize(90, 90); // Resize the icon
-            enemyIcon.setDisplaySize(90, 90); // Resize the icon
+            enemyIcon.setDisplaySize(99, 99); // Resize the icon to fill the 100x100 slot
+            // REMOVED duplicate setDisplaySize call
             // Optional: Add name text below icon
             this.add.text(pos.x, pos.y + 60, character.name, { fontSize: '16px', fill: '#fff', align: 'center' }).setOrigin(0.5);
             // Keep the red box for now, or remove if icon is sufficient
@@ -794,7 +794,7 @@ class PreBattleSetupScene extends Phaser.Scene {
         console.log(`Checking texture for slot ${slotIndex}: Key='${faceIconKey}', Exists=${this.textures.exists(faceIconKey)}`);
         if (this.textures.exists(faceIconKey)) {
             const icon = this.add.image(slot.x, slot.y, faceIconKey);
-            icon.setDisplaySize(90, 90);
+            icon.setDisplaySize(99, 99); // Resize the icon to fill the 100x100 slot
             icon.setInteractive();
             icon.setData('characterData', characterData);
             icon.on('pointerdown', (pointer) => {
