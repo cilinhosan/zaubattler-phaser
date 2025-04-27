@@ -142,8 +142,10 @@ class PreBattleSetupScene extends Phaser.Scene {
             slot.setData('slotIndex', index);
             slot.setInteractive();
             // Add click handler for team slots
-            slot.on('pointerdown', () => {
-                this._handleTeamSlotClick(index); // Pass the slot index
+            // Capture pointer and event objects
+            slot.on('pointerdown', (pointer, localX, localY, event) => {
+                // Pass the event object to the handler
+                this._handleTeamSlotClick(index, event); // Pass the slot index and event
             });
             this.playerTeamSlots.push(slot);
             this.playerTeamDisplays.push(null); // Initialize display array with null
@@ -188,7 +190,7 @@ class PreBattleSetupScene extends Phaser.Scene {
 
         const inventoryAreaX = 50;
         // inventoryAreaY is now calculated above
-        const inventoryAreaWidth = this.cameras.main.width - 100;
+        const inventoryAreaWidth = this.cameras.main.width - 100; // Back to local const
         const inventoryAreaHeight = 300; // Visible height
 
         // Create a container for all inventory items
@@ -199,8 +201,8 @@ class PreBattleSetupScene extends Phaser.Scene {
         const inventoryStartY = 20; // Relative to container
         const inventorySpacingX = 150; // Increased horizontal spacing
         const inventorySpacingY = 170; // Increased vertical spacing (box is 100, text adds ~25)
-        const itemsPerRow = Math.floor((inventoryAreaWidth - inventoryStartX * 2) / inventorySpacingX);
-        let maxContentHeight = 0;
+        const itemsPerRow = Math.floor((inventoryAreaWidth - inventoryStartX * 2) / inventorySpacingX); // Use local const
+        let maxContentHeight = 0; // Back to local variable (use let as it's reassigned)
 
         this.inventoryCharacterData.forEach((charData, index) => {
             const gridX = index % itemsPerRow;
@@ -221,10 +223,12 @@ class PreBattleSetupScene extends Phaser.Scene {
             // Add the display to the container
             this.inventoryContainer.add(charDisplay);
 
-            maxContentHeight = Math.max(maxContentHeight, displayY + charDisplay.height); // Track content height
+            maxContentHeight = Math.max(maxContentHeight, displayY + charDisplay.height); // Use local variable
         });
 
         // Set the container interactive over its full potential height
+        // Use stored properties
+        // Use local variables
         this.inventoryContainer.setInteractive(
             new Phaser.Geom.Rectangle(0, 0, inventoryAreaWidth, maxContentHeight),
             Phaser.Geom.Rectangle.Contains
@@ -233,6 +237,8 @@ class PreBattleSetupScene extends Phaser.Scene {
         // Add pointerdown listener to the container
         this.inventoryContainer.on('pointerdown', (pointer, localX, localY, event) => {
             console.log(`[Debug] inventoryContainer pointerdown: localX=${localX.toFixed(1)}, localY=${localY.toFixed(1)}`);
+
+            // REMOVED: Check for popupJustClosedByButton flag (This comment confirms removal from previous attempt)
 
             // Iterate through children to find which one was clicked
             let clickedChild = null;
@@ -261,10 +267,13 @@ class PreBattleSetupScene extends Phaser.Scene {
                     console.log(`[Debug] Click ignored, popup already open for ${clickedCharData.name}`);
                     return;
                 }
-                console.log('[Debug] Calling _hideActionPopup before showing new one.');
-                this._hideActionPopup(); // Hide any existing popup first
+                // No need to call _hideActionPopup here, _handleInventoryClick will do it.
+                // console.log('[Debug] Calling _hideActionPopup before showing new one.');
+                // this._hideActionPopup(); // Hide any existing popup first
                 console.log('[Debug] Calling _handleInventoryClick.');
                 this._handleInventoryClick(clickedCharData, clickedChild, popupTargetX, popupTargetY);
+                console.log('[Debug] Stopping propagation after handling inventory click.');
+                event.stopPropagation(); // Prevent this click from triggering global listener
 
             } else {
                 console.log('[Debug] Click detected on container, but not within any child bounds.');
@@ -280,13 +289,13 @@ class PreBattleSetupScene extends Phaser.Scene {
         // Create a mask for the scrollable area
         const maskGraphics = this.make.graphics();
         maskGraphics.fillStyle(0xffffff);
-        maskGraphics.fillRect(inventoryAreaX, inventoryAreaY, inventoryAreaWidth, inventoryAreaHeight);
+        maskGraphics.fillRect(inventoryAreaX, inventoryAreaY, inventoryAreaWidth, inventoryAreaHeight); // Use local const
         const mask = maskGraphics.createGeometryMask();
         this.inventoryContainer.setMask(mask);
 
         // Add drag scrolling
         const scrollBounds = {
-            minY: inventoryAreaY - (maxContentHeight > inventoryAreaHeight ? maxContentHeight - inventoryAreaHeight : 0),
+            minY: inventoryAreaY - (maxContentHeight > inventoryAreaHeight ? maxContentHeight - inventoryAreaHeight : 0), // Use local variable
             maxY: inventoryAreaY
         };
 
@@ -318,6 +327,7 @@ class PreBattleSetupScene extends Phaser.Scene {
         this.selectedInventoryDisplay = null; // Holds the display object selected from inventory
         this.isMovingState = false; // Flag to indicate if we are waiting for a team slot click
         this.actionPopup = null; // Reference to the Move/Inspect popup
+        // REMOVED: this.popupJustClosedByButton = false;
 
 
         // --- Start Battle Button ---
@@ -429,10 +439,27 @@ class PreBattleSetupScene extends Phaser.Scene {
     }
 
     _handleInventoryClick(characterData, MenuCharacterDisplay, clickX, clickY) {
-        console.log(`[Debug] _handleInventoryClick called for: ${characterData.name}`); // <-- ADD LOG
+        console.log(`[Debug] === _handleInventoryClick START for: ${characterData.name} ===`);
+        // Hide popup *only if* one already exists. Showing a new one handles the replacement.
+        if (this.actionPopup) {
+             this._hideActionPopup();
+        }
         console.log('Clicked inventory character:', characterData.name);
-        // Don't select if already in the team
+        // Don't select if already in the team // This comment is now outdated by subsequent changes
         const isInTeam = this.playerTeamDisplays.some(displayObj => displayObj && displayObj.data === characterData);
+
+        // Always allow showing the popup, but the 'Move' action will differ
+        this.selectedInventoryCharacterData = characterData;
+        this.selectedInventoryDisplay = MenuCharacterDisplay;
+        // The third argument (clickX, clickY) determines popup position.
+        // The 'inspectOnly' flag is removed; _showActionPopup will determine context.
+        this._showActionPopup(characterData, MenuCharacterDisplay, clickX, clickY);
+
+        // Note: The logic inside _showActionPopup's Move button handler will now
+        // need to check if the character is already in the team to decide whether
+        // to initiate a move *to* the team or trigger a move *from* the team.
+
+        /* // Original logic commented out for reference
         if (isInTeam) {
             console.log(`${characterData.name} is already in the team.`);
              // Allow inspect even if in team
@@ -441,16 +468,25 @@ class PreBattleSetupScene extends Phaser.Scene {
              this._showActionPopup(characterData, MenuCharacterDisplay, clickX, clickY, true); // Pass flag to only show inspect
             return;
         }
+        */
 
-        this.selectedInventoryCharacterData = characterData;
-        this.selectedInventoryDisplay = MenuCharacterDisplay;
-        this._showActionPopup(characterData, MenuCharacterDisplay, clickX, clickY);
+        // REMOVED: Redundant call to _showActionPopup and related state setting
+        // // These lines were part of the original 'else' block, now handled above unconditionally
+        // // this.selectedInventoryCharacterData = characterData; // Already set above
+        // // this.selectedInventoryDisplay = MenuCharacterDisplay; // Already set above
+        // this._showActionPopup(characterData, MenuCharacterDisplay, clickX, clickY); // Already called above
     }
-    _showActionPopup(characterData, MenuCharacterDisplay, clickX, clickY, inspectOnly = false) {
-        console.log(`[Debug] _showActionPopup called for ${characterData.name}. inspectOnly=${inspectOnly}`); // <-- ADD LOG
-        // this._hideActionPopup(); // Moved this call earlier to the click handler
+    _showActionPopup(characterData, inventoryDisplay, clickX, clickY) {
+        console.log(`[Debug] _showActionPopup called for ${characterData.name}.`);
 
-        const showMove = !inspectOnly;
+        // REMOVED: Disable background interactivity logic (Ensuring removal)
+
+        // Determine if the character is currently in the team
+        const isInTeam = this.playerTeamDisplays.some(displayObj => displayObj && displayObj.data === characterData);
+        console.log(`[Debug _showActionPopup] Is ${characterData.name} in team? ${isInTeam}`);
+
+        // Always show Move and Inspect for now, but Move's action changes
+        const showMove = true; // Always show move option
         const buttonHeight = 35;
         const padding = 10;
 
@@ -469,7 +505,9 @@ class PreBattleSetupScene extends Phaser.Scene {
 
         // Create a container for the popup elements
         this.actionPopup = this.add.container(popupX, popupY);
-        this.actionPopup.setData('targetDisplay', MenuCharacterDisplay); // Link popup to the display
+        // Link popup to the display object that triggered it (inventory or team slot display)
+        this.actionPopup.setData('targetDisplay', inventoryDisplay); // Use consistent key 'targetDisplay'
+        this.actionPopup.setData('characterData', characterData); // Store character data directly
 
         // Background
         const background = this.add.graphics();
@@ -478,6 +516,14 @@ class PreBattleSetupScene extends Phaser.Scene {
         background.lineStyle(1, 0xffffff, 1);
         background.strokeRect(0, 0, popupWidth, popupHeight);
         this.actionPopup.add(background);
+
+        // Make background interactive to catch clicks within the popup area
+        background.setInteractive(new Phaser.Geom.Rectangle(0, 0, popupWidth, popupHeight), Phaser.Geom.Rectangle.Contains);
+        background.on('pointerdown', (pointer, localX, localY, event) => {
+            console.log('[Debug] Click caught by popup background. Stopping propagation.');
+            event.stopPropagation();
+        });
+
 
         let currentY = padding;
 
@@ -488,10 +534,23 @@ class PreBattleSetupScene extends Phaser.Scene {
                 .setInteractive();
             // The event object is the last argument for GameObject pointerdown
             moveButton.on('pointerdown', (pointer, localX, localY, event) => {
-                console.log('[Debug] Move button clicked.'); // <-- ADD LOG
-                event.stopPropagation(); // Call stopPropagation on the DOM event object
-                this._handleMoveClick();
+                console.log('[Debug] Move button clicked.');
+                event.stopPropagation(); // Prevent click from bubbling further
+
+                // Hide the popup FIRST
                 this._hideActionPopup();
+                // REMOVED: Flag logic
+
+
+                // Then perform the action
+                if (isInTeam) {
+                    console.log(`[Debug] Calling _handleMoveFromTeamClick for ${characterData.name}`);
+                    this._handleMoveFromTeamClick(characterData);
+                } else {
+                    console.log(`[Debug] Calling _handleMoveToTeamClick for ${characterData.name}`);
+                    this._handleMoveToTeamClick(characterData, inventoryDisplay);
+                }
+                // Note: _hideActionPopup is now called above, removed from move handlers
             });
             this.actionPopup.add(moveButton);
             currentY += buttonHeight + padding;
@@ -505,10 +564,16 @@ class PreBattleSetupScene extends Phaser.Scene {
             .setInteractive();
         // The event object is the last argument for GameObject pointerdown
         inspectButton.on('pointerdown', (pointer, localX, localY, event) => {
-             console.log('[Debug] Inspect button clicked.'); // <-- ADD LOG
-             event.stopPropagation(); // Call stopPropagation on the DOM event object
-            this._handleInspectClick(characterData);
-            this._hideActionPopup();
+             console.log('[Debug] Inspect button clicked.');
+             event.stopPropagation(); // Prevent click from bubbling further
+
+             // Hide the popup FIRST
+             this._hideActionPopup();
+             // REMOVED: Flag logic
+
+             // Then perform the action
+             this._handleInspectClick(characterData);
+             // Note: _hideActionPopup is now called above, removed from inspect handler
         });
         this.actionPopup.add(inspectButton);
 
@@ -517,31 +582,71 @@ class PreBattleSetupScene extends Phaser.Scene {
     }
 
     _hideActionPopup() {
+        console.log(`[Debug] === _hideActionPopup START. Current this.actionPopup: ${this.actionPopup ? 'Exists' : 'null'}. isMovingState: ${this.isMovingState} ===`);
+        const popupExisted = !!this.actionPopup; // Track if popup was actually open
+
         if (this.actionPopup) {
-            console.log('[Debug] _hideActionPopup called. Destroying existing popup.'); // <-- ADD LOG
-            this.actionPopup.destroy();
-            this.actionPopup = null;
+            console.log('[Debug] Popup exists. Attempting destroy...');
+            try {
+                this.actionPopup.destroy();
+                console.log('[Debug] Popup destroyed successfully.');
+                this.actionPopup = null;
+            } catch (error) {
+                console.error('[Debug] Error destroying popup:', error);
+                // Force null even if destroy failed, might hide visual glitches
+                this.actionPopup = null;
+            }
         } else {
-             console.log('[Debug] _hideActionPopup called, but no popup exists.'); // <-- ADD LOG
+             console.log('[Debug] _hideActionPopup called, but no popup exists.');
         }
+
+        // REMOVED: Re-enable background interactivity logic
+
         // Reset selection state if not entering move mode
         if (!this.isMovingState) {
              this.selectedInventoryCharacterData = null;
              this.selectedInventoryDisplay = null;
         }
     }
-    _handleMoveClick() {
-        if (!this.selectedInventoryCharacterData) return;
-        console.log('Move selected for:', this.selectedInventoryCharacterData.name);
+    // Renamed from _handleMoveClick - handles initiating move TO team
+    _handleMoveToTeamClick(characterData, inventoryDisplay) {
+        if (!characterData) return;
+        console.log('Move TO team selected for:', characterData.name);
+        this.selectedInventoryCharacterData = characterData; // Set the character to be moved
+        this.selectedInventoryDisplay = inventoryDisplay; // Set the corresponding inventory display
         this.isMovingState = true;
-        // Visual cue: maybe highlight team slots?
+        // Visual cue: highlight team slots
         this.playerTeamSlots.forEach(slot => slot.setStrokeStyle(3, 0x00ff00)); // Highlight slots
+        // REMOVED: this._hideActionPopup(); // Now handled by the button listener itself
     }
+
+     // New function to handle moving FROM team
+    _handleMoveFromTeamClick(characterData) {
+        if (!characterData) return;
+        console.log(`Move FROM team selected for: ${characterData.name}`);
+
+        // Find the team slot this character is in
+        const slotIndex = this.playerTeamDisplays.findIndex(displayObj => displayObj && displayObj.data === characterData);
+
+        if (slotIndex !== -1) {
+            console.log(`${characterData.name} found in team slot ${slotIndex}. Removing.`);
+            // Remove character from the visual team slot
+            this._updateTeamSlotVisual(slotIndex, null);
+            // Update inventory visuals (remove checkmark)
+            this._updateInventorySelectionVisuals();
+        } else {
+            console.warn(`Could not find ${characterData.name} in the team display array.`);
+        }
+
+        // REMOVED: this._hideActionPopup(); // Now handled by the button listener itself
+    }
+
 
     _handleInspectClick(characterData) {
         if (!characterData) return;
         console.log('Inspect selected for:', characterData.name);
         // TODO: Implement actual inspect functionality later
+        // REMOVED: this._hideActionPopup(); // Now handled by the button listener itself
     }
 
     _handleTeamMemberClick(icon, pointer) {
@@ -549,58 +654,88 @@ class PreBattleSetupScene extends Phaser.Scene {
         if (!characterData) return;
 
         console.log('Clicked team member:', characterData.name);
+        this._hideActionPopup(); // Hide any existing popup first
         // Show popup, likely inspect-only for now
         // Pass 'icon' as the display target for positioning/checking later
         this._showActionPopup(characterData, icon, pointer.worldX, pointer.worldY, true); // true = inspectOnly
     }
 
      _handleTeamSlotClick(slotIndex) {
+        console.log(`[Debug] === _handleTeamSlotClick START for index: ${slotIndex}. isMovingState: ${this.isMovingState} ===`); // <-- ADDED START LOG
         // This function is for clicking the empty slot rectangle *during* a move operation
-        if (!this.isMovingState || !this.selectedInventoryCharacterData) {
-            // If not in move state, maybe allow clicking team members later?
-            console.log("Not in move state or no character selected.");
-            return;
+        if (this.isMovingState && this.selectedInventoryCharacterData) {
+            // --- Moving TO a slot ---
+            console.log(`Attempting to move ${this.selectedInventoryCharacterData.name} to slot ${slotIndex}`);
+
+            const previouslySelectedData = this.selectedInventoryCharacterData;
+            const previouslySelectedDisplay = this.selectedInventoryDisplay;
+
+            // Check if the target slot is already occupied
+            const currentCharacterInSlotDisplayObj = this.playerTeamDisplays[slotIndex];
+            const currentCharacterInSlotData = currentCharacterInSlotDisplayObj ? currentCharacterInSlotDisplayObj.data : null;
+
+            // --- Logic ---
+            // 1. Place selected character visually in the slot
+            this._updateTeamSlotVisual(slotIndex, previouslySelectedData);
+
+            // 2. If slot was occupied, move the previous character back to inventory (conceptually)
+            //    - Visual update handled below by _updateInventorySelectionVisuals
+            if (currentCharacterInSlotData) {
+                 console.log(`Slot ${slotIndex} occupied by ${currentCharacterInSlotData.name}. Returning to inventory.`);
+            }
+
+            // 3. Mark the newly placed character's inventory display as 'selected' (checkmark) - Handled by _updateInventorySelectionVisuals
+
+            // --- Cleanup ---
+            this.isMovingState = false;
+            this.selectedInventoryCharacterData = null; // Clear selection after move
+            this.selectedInventoryDisplay = null;
+            this.playerTeamSlots.forEach(slot => slot.setStrokeStyle(2, 0xffffff)); // Reset slot highlight
+            this._hideActionPopup(); // Ensure popup is hidden
+            this._updateInventorySelectionVisuals(); // Update all checkmarks
+
+            console.log(`Moved ${previouslySelectedData.name} to slot ${slotIndex}.`);
+
+        } else if (!this.isMovingState) {
+            // --- Clicking when NOT moving ---
+            const characterDisplayInSlot = this.playerTeamDisplays[slotIndex]; // Get the display object or null
+            const characterDataInSlot = characterDisplayInSlot ? characterDisplayInSlot.data : null;
+
+            if (characterDataInSlot) {
+                // REMOVED: Check for popupJustClosedByButton flag
+
+                // Clicked an occupied slot: Show action popup for this character
+                console.log(`Clicked occupied team slot ${slotIndex} with ${characterDataInSlot.name}. Showing popup.`);
+
+                // Get world coordinates of the slot center for popup positioning
+                const slotObject = this.playerTeamSlots[slotIndex];
+                const worldMatrix = slotObject.getWorldTransformMatrix();
+                const worldX = worldMatrix.tx;
+                const worldY = worldMatrix.ty;
+
+                // Hide popup *only if* one already exists. Showing a new one handles the replacement.
+                if (this.actionPopup) {
+                    this._hideActionPopup();
+                }
+                // Show popup for the character in the team slot.
+                // Pass the character data, the display object *in the slot*, and slot position.
+                this._showActionPopup(characterDataInSlot, characterDisplayInSlot, worldX, worldY);
+                console.log('[Debug] Stopping propagation after showing popup from team slot.');
+                if (event) event.stopPropagation(); // Prevent this click from triggering global listener
+
+            } else {
+                // Clicked an empty slot when not moving - do nothing.
+                console.log(`Clicked empty team slot ${slotIndex} while not in moving state.`);
+                // Hide any inventory popup if an empty slot was clicked.
+                 this._hideActionPopup();
+            }
+        } else {
+             // Catch case: isMovingState is true but no character selected (shouldn't happen)
+             console.log("In move state but no character selected.");
+             this.isMovingState = false; // Reset state
+             this.playerTeamSlots.forEach(slot => slot.setStrokeStyle(2, 0xffffff)); // Reset highlight
+             this._hideActionPopup();
         }
-
-        console.log(`Attempting to move ${this.selectedInventoryCharacterData.name} to slot ${slotIndex}`);
-
-        const previouslySelectedData = this.selectedInventoryCharacterData;
-        const previouslySelectedDisplay = this.selectedInventoryDisplay;
-
-        // Check if the target slot is already occupied
-        const currentCharacterInSlotDisplayObj = this.playerTeamDisplays[slotIndex];
-        const currentCharacterInSlotData = currentCharacterInSlotDisplayObj ? currentCharacterInSlotDisplayObj.data : null;
-
-        // --- Logic ---
-        // 1. Place selected character visually in the slot
-        this._updateTeamSlotVisual(slotIndex, previouslySelectedData);
-
-        // 2. If slot was occupied, move the previous character back to inventory (conceptually)
-        //    - Find the inventory display for the character that was in the slot
-        //    - Mark it as 'not selected' (remove checkmark)
-        if (currentCharacterInSlotData) {
-             console.log(`Slot ${slotIndex} occupied by ${currentCharacterInSlotData.name}. Returning to inventory.`);
-             // Find the corresponding inventory display and update its visual state
-             const originalInventoryDisplay = this.inventoryDisplays.find(display => display.getData('characterData') === currentCharacterInSlotData);
-             if (originalInventoryDisplay) {
-                 // TODO: Implement visual update (remove checkmark) in _updateInventorySelectionVisuals
-             } else {
-                 console.warn("Could not find original inventory display for:", currentCharacterInSlotData.name);
-             }
-        }
-
-        // 3. Mark the newly placed character's inventory display as 'selected' (checkmark)
-        // TODO: Implement visual update (add checkmark) in _updateInventorySelectionVisuals
-
-        // --- Cleanup ---
-        this.isMovingState = false;
-        this.selectedInventoryCharacterData = null; // Clear selection after move
-        this.selectedInventoryDisplay = null;
-        this.playerTeamSlots.forEach(slot => slot.setStrokeStyle(2, 0xffffff)); // Reset slot highlight
-        this._hideActionPopup(); // Ensure popup is hidden
-        this._updateInventorySelectionVisuals(); // Update all checkmarks
-
-        console.log(`Moved ${previouslySelectedData.name} to slot ${slotIndex}.`);
     }
     _updateInventorySelectionVisuals() {
         // Iterate through inventory displays and team displays
