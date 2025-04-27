@@ -371,19 +371,31 @@ class PreBattleSetupScene extends Phaser.Scene {
 
     /**
      * Called when returning to this scene to load the next battle's data.
+     * DEPRECATED - Logic moved to wake()
      */
     updateBattleData() {
-        console.log("PreBattleSetupScene: Updating battle data...");
+        console.warn("PreBattleSetupScene: updateBattleData() is deprecated. Use wake() event.");
+        // Optionally, call wake directly if needed for compatibility, but ideally remove calls to this.
+        // this.wake();
+    }
+
+    /**
+     * Phaser Scene lifecycle method called when the Scene wakes up (e.g., after switching back).
+     */
+    wake() {
+        console.log("PreBattleSetupScene: Waking up...");
         const battleIndex = GameDataManager.getCurrentBattleIndex();
         this._loadAndDisplayBattleData(battleIndex);
-        // Refresh inventory visuals in case team status changed implicitly (though unlikely here)
+        // Refresh inventory visuals
         this._updateInventorySelectionVisuals();
-        // Reset any interaction states
+        // Reset interaction states
         this._hideActionPopup();
         this.isMovingState = false;
         this.selectedInventoryCharacterData = null;
         this.selectedInventoryDisplay = null;
+        console.log("PreBattleSetupScene: Wake update complete.");
     }
+
 
     // Removed displayCharacterInfo as it's replaced by the new interaction model
 
@@ -851,8 +863,10 @@ class PreBattleSetupScene extends Phaser.Scene {
                 // Keep the red box for now, or remove if icon is sufficient
                 const enemySlotRect = this.add.rectangle(pos.x, pos.y, 100, 100).setStrokeStyle(2, 0xff0000);
 
-                // Add all created display objects to the group
-                this.enemyDisplayGroup.addMultiple([enemyIcon, enemyNameText, enemySlotRect]);
+                // Add all created display objects to the group individually
+                if (enemyIcon) this.enemyDisplayGroup.add(enemyIcon);
+                if (enemyNameText) this.enemyDisplayGroup.add(enemyNameText);
+                if (enemySlotRect) this.enemyDisplayGroup.add(enemySlotRect);
             }
         });
         console.log(`PreBattleSetupScene: Display updated for battle index ${battleIndex}`);

@@ -14,11 +14,11 @@ export class WolfDefinition extends CharacterDefinition {
             description: "A wild wolf.",
             faceIconKey: 'default_character_icon', // Using default player icon for now
             faceIconPath: 'assets/default_character_ilustration_face_icon.png',
-            battleIconKey: 'default_battle_icon', // Using default player battle icon for now
-            battleIconPath: 'assets/default_character_ilustration_4_3.png'
+            battleIconKey: 'default_enemy_icon', // Use the standard enemy icon key
+            battleIconPath: 'assets/default_enemy_illustration_4_3.png' // Use the standard enemy icon path
         });
 
-         this.skillMetadata = {
+        this.skillMetadata = {
             skillBite: { name: "Bite", description: "Deals physical damage.", type: 'active', cooldown: 4, targetType: 'enemy' }
         };
     }

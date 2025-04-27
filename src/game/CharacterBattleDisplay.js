@@ -1,14 +1,16 @@
+// src/game/CharacterBattleDisplay.js
 import Phaser from 'phaser';
 
 const MAX_SLOTS = 5;
-const BOX_WIDTH = 150;
-const BOX_HEIGHT = 180;
-const PADDING = 60; // Increased by half (40 + 40/2)
+const BOX_WIDTH = 240; // 160 * 1.5
+const BOX_HEIGHT = 180; // 120 * 1.5 (Maintains 4:3 ratio)
+const PADDING = 40; // 80 * 0.5 (Reduced spacing)
 
-const PLAYER_START_X = 300;
+// Target: 10% margin from screen edge (192px on 1920 width) to the box edge
+const PLAYER_START_X = 181; // Calculated for 10% margin (192px) to box edge
 const PLAYER_START_Y = 400;
 
-const ENEMY_START_X = 1400; // Adjusted for 1080p
+const ENEMY_START_X = 1499; // Calculated for 10% margin (192px) from right edge (1920px) to box edge
 const ENEMY_START_Y = 400; // Adjusted for 1080p
 
 const HP_BAR_HEIGHT = 10;
@@ -34,42 +36,89 @@ class CharacterBattleDisplay { // Renamed class
     }
 
     createDisplayElements() {
-        // Graphics for the box and HP bar
+        // --- Calculate Target Dimensions ---
+        const targetIconWidth = this.rectWidth * 0.9; // Based on original BOX_WIDTH
+        const targetIconHeight = this.rectHeight * 0.9; // Based on original BOX_HEIGHT
+        const boxWidth = targetIconWidth + 2; // Add 1px border on each side
+        const boxHeight = targetIconHeight + 2; // Add 1px border on each side
+
+        // --- Calculate Centered Positions ---
+        // Use original rectX/rectY for consistent grid positioning calculation
+        const centerX = this.rectX + this.rectWidth / 2;
+        const centerY = this.rectY + this.rectHeight / 2;
+
+        // Calculate top-left for the new tighter box based on center
+        const boxX = centerX - boxWidth / 2;
+        const boxY = centerY - boxHeight / 2;
+
+        // --- Create Display Elements ---
+
+        // Graphics for the box (Positioned at the new top-left)
         this.graphics = this.scene.add.graphics();
-        this.graphics.setPosition(this.rectX, this.rectY);
-        this.graphics.lineStyle(2, 0xffffff, 1);
-        this.graphics.strokeRect(0, 0, this.rectWidth, this.rectHeight);
+        this.graphics.setPosition(boxX, boxY); // Position graphics container
+        this.graphics.lineStyle(1, 0xffffff, 1); // Use 1px line for tighter look
+        this.graphics.strokeRect(0, 0, boxWidth, boxHeight); // Draw box relative to container
 
-        // Text for the character name
-        const displayName = this.character.name || this.character.type;
-        this.text = this.scene.add.text(this.rectX + this.rectWidth / 2, this.rectY + this.rectHeight / 2, displayName, {
-            fontSize: '32px',
-            fill: '#fff'
-        }).setOrigin(0.5);
+        // Image for the character battle icon (Positioned at the center)
+        // Assumes the icon was loaded in BattleScene.preload
+        // Access the key via the definition stored on the BattleCharacter instance
+        const iconKey = this.character.definition?.battleIconKey; // Use optional chaining for safety
+        if (!iconKey) {
+            console.error(`CharacterBattleDisplay Error: Character ${this.character.name} definition is missing battleIconKey!`);
+            this.icon = null;
+        } else {
+            console.log(`CharacterBattleDisplay: Attempting to create image for ${this.character.name} with key: ${iconKey}`);
+            // Position icon at the calculated center
+            this.icon = this.scene.add.image(centerX, centerY, iconKey);
 
-        // HP bar
+            if (this.icon && this.icon.texture && this.icon.texture.key === iconKey) {
+                 console.log(`  - Success: Image created for ${this.character.name}. Texture key: ${this.icon.texture.key}, Size: ${this.icon.width}x${this.icon.height}`);
+                 // Scale the icon to the target size
+                 this.icon.setDisplaySize(targetIconWidth, targetIconHeight);
+                 console.log(`  - Scaled display size: ${this.icon.displayWidth}x${this.icon.displayHeight}`);
+            } else if (this.icon) {
+                 console.error(`  - Error: Image created for ${this.character.name}, BUT texture key is wrong or missing! Expected: ${iconKey}, Got: ${this.icon.texture?.key}`);
+                 if (this.scene.textures.exists(iconKey)) {
+                     console.error(`    - Texture '${iconKey}' EXISTS in manager, but wasn't applied correctly?`);
+                 } else {
+                     console.error(`    - Texture '${iconKey}' DOES NOT EXIST in manager. Loading issue in BattleScene.preload?`);
+                 }
+                 this.icon.setVisible(false);
+            } else {
+                 console.error(`  - Error: Failed to create image object for ${this.character.name} with key ${iconKey}.`);
+            }
+        }
+
+        // HP bar (Positioned below the new box)
+        const hpBarX = boxX; // Align with the box's left edge
+        const hpBarY = boxY + boxHeight + HP_BAR_Y_OFFSET; // Position below the box
+        const hpBarWidth = boxWidth; // Match the box width
+
         this.hpBar = this.scene.add.graphics();
+        // Position the HP bar graphics object itself
+        this.hpBar.setPosition(hpBarX, hpBarY);
         this.hpBar.fillStyle(0x00ff00, 1); // Green color for HP
-        this.hpBar.fillRect(this.rectX, this.rectY + this.rectHeight + HP_BAR_Y_OFFSET, this.rectWidth, HP_BAR_HEIGHT);
+        // Draw relative to the graphics object's position (0, 0)
+        this.hpBar.fillRect(0, 0, hpBarWidth, HP_BAR_HEIGHT);
 
-        // HP text - Use getter methods
+        // HP text - Centered on the new HP bar
         const initialHp = typeof this.character.getCurrentHp === 'function' ? this.character.getCurrentHp() : '?';
         const initialMaxHp = typeof this.character.getMaxHp === 'function' ? this.character.getMaxHp() : '?';
-        this.hpText = this.scene.add.text(this.rectX + this.rectWidth / 2, this.rectY + this.rectHeight + HP_BAR_Y_OFFSET + HP_BAR_HEIGHT / 2, `${initialHp}/${initialMaxHp}`, {
-            fontSize: '24px',
+        this.hpText = this.scene.add.text(hpBarX + hpBarWidth / 2, hpBarY + HP_BAR_HEIGHT / 2, `${initialHp}/${initialMaxHp}`, {
+            fontSize: '30px', // Increased font size for larger display
             fill: '#fff'
         })
         .setOrigin(0.5)
         .setStroke('#000000', 4); // Black stroke
 
-        // Store references to Phaser objects on the character object for easier access in BattleScene (e.g., for attack indicator)
-        // This might be removed later if BattleScene only interacts with CharacterDisplay
+        // Store references
         this.character.graphics = this.graphics;
-        this.character.text = this.text;
+        this.character.icon = this.icon;
         this.character.hpBar = this.hpBar;
         this.character.hpText = this.hpText;
-        this.character.rectWidth = this.rectWidth; // Store dimensions too
-        this.character.rectHeight = this.rectHeight;
+        // Store the *actual* box dimensions used for display, not the original constants
+        this.character.rectWidth = boxWidth;
+        this.character.rectHeight = boxHeight;
     }
 
     updateHpDisplay() {
@@ -86,14 +135,22 @@ class CharacterBattleDisplay { // Renamed class
         const currentHp = this.character.getCurrentHp();
         const maxHp = this.character.getMaxHp();
         const hpPercentage = maxHp > 0 ? Math.max(0, currentHp / maxHp) : 0; // Avoid division by zero
-        const hpBarWidth = this.rectWidth * hpPercentage;
+        // Use the actual displayed box width for HP bar calculation
+        const currentBoxWidth = this.character.rectWidth || this.rectWidth; // Fallback just in case
+        const hpBarWidthValue = currentBoxWidth * hpPercentage;
+
+        // Get the current position of the HP bar graphics object
+        const hpBarX = this.hpBar.x; // Should be the same as boxX
+        const hpBarY = this.hpBar.y; // Should be boxY + boxHeight + HP_BAR_Y_OFFSET
 
         this.hpBar.clear();
         this.hpBar.fillStyle(0x00ff00, 1);
-        this.hpBar.fillRect(this.rectX, this.rectY + this.rectHeight + HP_BAR_Y_OFFSET, hpBarWidth, HP_BAR_HEIGHT);
+        // Draw relative to the hpBar graphics object's position (which is already set)
+        this.hpBar.fillRect(0, 0, hpBarWidthValue, HP_BAR_HEIGHT);
 
         this.hpText.setText(`${currentHp}/${maxHp}`);
-        this.hpText.setPosition(this.rectX + this.rectWidth / 2, this.rectY + this.rectHeight + HP_BAR_Y_OFFSET + HP_BAR_HEIGHT / 2);
+        // Recenter text on the potentially changed HP bar
+        this.hpText.setPosition(hpBarX + currentBoxWidth / 2, hpBarY + HP_BAR_HEIGHT / 2);
     }
 
     shake() {
@@ -124,18 +181,19 @@ class CharacterBattleDisplay { // Renamed class
             }
         });
 
-        if (this.text && this.text.scene) {
-            const originalTextX = this.text.x;
+        // Shake the icon as well (check if icon exists)
+        if (this.icon && this.icon.scene) {
+            const originalIconX = this.icon.x;
             this.scene.tweens.add({
-                targets: this.text,
-                x: { from: originalTextX, to: originalTextX + 10 },
+                targets: this.icon,
+                x: { from: originalIconX, to: originalIconX + 10 },
                 ease: 'Sine.easeInOut',
                 duration: 50,
                 repeat: 3,
                 yoyo: true,
                 onComplete: () => {
-                    if (this.text && this.text.scene) {
-                        this.text.x = originalTextX;
+                    if (this.icon && this.icon.scene) {
+                        this.icon.x = originalIconX;
                     }
                 }
             });
@@ -145,9 +203,12 @@ class CharacterBattleDisplay { // Renamed class
     // Modified highlightBorder to operate on this.graphics
     highlightBorder(color, thickness = 2) {
         if (!this.graphics || this.graphics.isDestroyed) return;
+        // Use the actual displayed box dimensions
+        const currentBoxWidth = this.character.rectWidth || this.rectWidth;
+        const currentBoxHeight = this.character.rectHeight || this.rectHeight;
         this.graphics.clear();
         this.graphics.lineStyle(thickness, color, 1);
-        this.graphics.strokeRect(0, 0, this.rectWidth, this.rectHeight);
+        this.graphics.strokeRect(0, 0, currentBoxWidth, currentBoxHeight);
     }
 
     // New method to clear the highlight and revert to default border
@@ -158,7 +219,7 @@ class CharacterBattleDisplay { // Renamed class
     // New method to hide display elements
     hide() {
         if (this.graphics && !this.graphics.isDestroyed) this.graphics.setVisible(false);
-        if (this.text && this.text.scene) this.text.setVisible(false);
+        if (this.icon && this.icon.scene) this.icon.setVisible(false); // Use icon (check if exists)
         if (this.hpBar && !this.hpBar.isDestroyed) this.hpBar.setVisible(false);
         if (this.hpText && this.hpText.scene) this.hpText.setVisible(false);
     }
@@ -166,7 +227,7 @@ class CharacterBattleDisplay { // Renamed class
     // New method to show display elements
     show() {
         if (this.graphics && !this.graphics.isDestroyed) this.graphics.setVisible(true);
-        if (this.text && this.text.scene) this.text.setVisible(true);
+        if (this.icon && this.icon.scene) this.icon.setVisible(true); // Use icon (check if exists)
         if (this.hpBar && !this.hpBar.isDestroyed) this.hpBar.setVisible(true);
         if (this.hpText && this.hpText.scene) this.hpText.setVisible(true);
     }
@@ -174,7 +235,7 @@ class CharacterBattleDisplay { // Renamed class
 
     destroy() {
         if (this.graphics && !this.graphics.isDestroyed) this.graphics.destroy();
-        if (this.text && this.text.scene) this.text.destroy();
+        if (this.icon && this.icon.scene) this.icon.destroy(); // Use icon (check if exists)
         if (this.hpBar && !this.hpBar.isDestroyed) this.hpBar.destroy();
         if (this.hpText && this.hpText.scene) this.hpText.destroy();
         this.isDestroyed = true; // Add a flag to prevent errors after destruction
@@ -199,7 +260,7 @@ class CharacterBattleDisplay { // Renamed class
         if (this.isDestroyed) return;
         // Example: Make the display semi-transparent or apply a grayscale filter
         if (this.graphics) this.graphics.setAlpha(0.5);
-        if (this.text) this.text.setAlpha(0.5);
+        if (this.icon) this.icon.setAlpha(0.5); // Use icon (check if exists)
         if (this.hpBar) this.hpBar.setAlpha(0.5);
         if (this.hpText) this.hpText.setAlpha(0.5);
         // Optionally hide completely after an animation

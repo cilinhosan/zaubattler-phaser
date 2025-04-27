@@ -17,8 +17,61 @@ class BattleScene extends Phaser.Scene {
     }
 
     preload() {
-        // Preload assets if needed
-        // Load skill icons here based on SkillDefinitions
+        console.log("BattleScene: Preloading assets for current battle...");
+        const loadedIconKeys = new Set();
+
+        // Helper function to load asset if valid and not already loaded
+        const loadIcon = (definition) => {
+            if (definition && definition.battleIconKey && definition.battleIconPath && !loadedIconKeys.has(definition.battleIconKey)) {
+                console.log(` - Loading icon: ${definition.battleIconKey} from ${definition.battleIconPath}`);
+                this.load.image(definition.battleIconKey, definition.battleIconPath);
+                loadedIconKeys.add(definition.battleIconKey);
+            } else if (definition && definition.battleIconKey && !definition.battleIconPath) {
+                 console.warn(`BattleScene Preload: Character definition '${definition.id}' has battleIconKey but no battleIconPath.`);
+            }
+        };
+
+        // --- 1. Determine Assets for Player Team ---
+        const playerTeamData = GameDataManager.getActiveTeam(); // Get player team data
+        console.log(`BattleScene Preload: Loading icons for ${playerTeamData.length} player characters.`);
+        playerTeamData.forEach(charData => {
+            if (charData && charData.definitionId) {
+                try {
+                    // Get definition directly to access icon paths
+                    const definition = getCharacterDefinition(charData.definitionId);
+                    loadIcon(definition);
+                } catch (error) {
+                    console.error(`BattleScene Preload: Error getting definition for player character ID '${charData.definitionId}':`, error);
+                }
+            }
+        });
+
+        // --- 2. Determine Assets for Enemy Team ---
+        // Get battle index from GameDataManager *before* create receives it
+        const battleIndex = GameDataManager.getCurrentBattleIndex();
+        const currentBattleConfig = battlesData[battleIndex];
+
+        if (currentBattleConfig && currentBattleConfig.enemies) {
+            console.log(`BattleScene Preload: Loading icons for ${currentBattleConfig.enemies.length} enemy types in battle ${battleIndex}.`);
+            currentBattleConfig.enemies.forEach(enemyConfig => {
+                if (enemyConfig.type) {
+                    const enemyId = enemyConfig.type.toLowerCase();
+                    try {
+                        const definition = getCharacterDefinition(enemyId);
+                        loadIcon(definition);
+                    } catch (error) {
+                        console.error(`BattleScene Preload: Error getting definition for enemy type '${enemyId}':`, error);
+                    }
+                }
+            });
+        } else {
+             console.warn(`BattleScene Preload: Could not find enemy configuration for battle index ${battleIndex}.`);
+        }
+
+        // --- Default Icon Loading Removed ---
+
+        console.log("BattleScene: Preload finished.");
+        // Load other assets like skill icons if needed
     }
 
     create(data) {
@@ -351,19 +404,9 @@ class BattleScene extends Phaser.Scene {
                     // Increment the global battle index
                     GameDataManager.incrementBattleIndex();
 
-                    // Get the existing PreBattleSetupScene instance
-                    const preBattleScene = this.scene.get('PreBattleSetupScene');
-
-                    if (preBattleScene && preBattleScene.updateBattleData) {
-                        // Call the update method on the existing scene
-                        preBattleScene.updateBattleData();
-                        // Switch back to the existing scene instance
-                        this.scene.switch('PreBattleSetupScene');
-                    } else {
-                        console.error("Could not find existing PreBattleSetupScene or its updateBattleData method. Restarting scene.");
-                        // Fallback: Start a new scene if switching fails (shouldn't happen ideally)
-                        this.scene.start('PreBattleSetupScene'); // No data needed
-                    }
+                    // Switch back to the PreBattleSetupScene. Its 'wake' method will handle updates.
+                    console.log("Switching back to PreBattleSetupScene...");
+                    this.scene.switch('PreBattleSetupScene');
                 }, [], this);
             } else {
                 // All battles completed
