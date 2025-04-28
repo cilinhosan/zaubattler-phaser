@@ -16,5 +16,7 @@ module.exports = merge(common, {
   output: {
     filename: '[name].bundle.js', // Simple name for dev
     publicPath: '/', // Use root public path for dev server
+    // Use simple names for assets in dev, no hash needed
+    assetModuleFilename: 'assets/[name][ext][query]'
   },
 });

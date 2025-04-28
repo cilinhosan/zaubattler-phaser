@@ -7,6 +7,7 @@ import { getCharacterDefinition } from './CharacterDefinitionList.js'; // Correc
 // import { fireBlastSkill, atkBoostPassive } from './game/SkillDefinitions.js'; // Removed unused skill imports
 import MenuCharacterDisplay from './game/MenuCharacterDisplay.js'; // Import MenuCharacterDisplay
 import GameDataManager from './game/GameDataManager.js'; // Import the GameDataManager singleton
+import setupLoadingIndicator from './LoadingIndicator.js'; // Import the utility function (Corrected path)
 
 
 class PreBattleSetupScene extends Phaser.Scene {
@@ -20,61 +21,127 @@ class PreBattleSetupScene extends Phaser.Scene {
     // init(data) removed - battleIndex is now managed globally
 
     preload() {
-        // --- Load Default Icons ---
+        console.log('PreBattleSetupScene: preload()');
+
+        // --- Load Manifest ---
+        const manifest = this.registry.get('assetManifest');
+
+        if (!manifest) {
+            console.error('PreBattleSetupScene: Asset Manifest not found in registry!');
+            // Display error message directly if manifest is missing
+            this.add.text(this.cameras.main.width / 2, this.cameras.main.height / 2,
+                'Error: Asset Manifest missing!\nCannot load assets.',
+                { fill: '#ff0000', fontSize: '24px', align: 'center' }
+            ).setOrigin(0.5);
+            return; // Stop preloading if manifest is missing
+        }
+        console.log('PreBattleSetupScene: Found Asset Manifest:', manifest);
+
+        // --- Setup Loading Indicator ---
+        // Call the utility function, passing the scene context and a title
+        setupLoadingIndicator(this, 'Loading Team Setup...');
+
+        // --- Asset Loading Logic (using manifest) ---
+        const loadedIconKeys = new Set(); // Keep track of keys we've started loading
+
+        // Helper function to load an image using the manifest (remains the same)
+        const loadAsset = (key, sourcePath) => {
+            if (!key || !sourcePath) {
+                console.warn(`loadAsset: Missing key or sourcePath. Key: ${key}, SourcePath: ${sourcePath}`);
+                return;
+            }
+            if (loadedIconKeys.has(key)) {
+                // console.log(`loadAsset: Key '${key}' already loading/loaded.`);
+                return; // Don't load the same key multiple times
+            }
+
+            // --- Manifest Key Normalization ---
+            // WebpackManifestPlugin might store keys relative to context or basePath.
+            // Common patterns: 'assets/image.png', 'src/assets/image.png'
+            // We need to find the key format that matches our sourcePath.
+            // Let's try a few common variations based on how the manifest might be generated.
+            const possibleKeys = [
+                sourcePath,                 // e.g., 'assets/image.png'
+                `./${sourcePath}`,          // e.g., './assets/image.png'
+                sourcePath.startsWith('src/') ? sourcePath : `src/${sourcePath}` // e.g., 'src/assets/image.png'
+            ];
+
+            let hashedPath = null;
+            for (const pKey of possibleKeys) {
+                if (manifest[pKey]) {
+                    hashedPath = manifest[pKey];
+                    // console.log(`loadAsset: Found manifest entry for '${pKey}' -> '${hashedPath}'`);
+                    break;
+                }
+            }
+
+            if (hashedPath) {
+                console.log(`Preloading: Key='${key}', Source='${sourcePath}', Hashed='${hashedPath}'`);
+                this.load.image(key, hashedPath);
+                loadedIconKeys.add(key); // Mark as loading
+            } else {
+                console.error(`Asset key '${key}' with source path '${sourcePath}' not found in manifest! Tried keys:`, possibleKeys);
+                // Optionally load a fallback/error image here
+                // this.load.image(key, 'path/to/error/image.png');
+                // loadedIconKeys.add(key); // Add key even on error to prevent repeated attempts
+            }
+        };
+
+        // --- Load Default Icons using the helper ---
         const defaultFaceIconKey = 'default_character_icon';
+        const defaultFaceIconSourcePath = 'assets/default_character_ilustration_face_icon.png';
+        loadAsset(defaultFaceIconKey, defaultFaceIconSourcePath);
+
         const defaultBattleIconKey = 'default_battle_icon';
-        const defaultEnemyIconKey = 'enemy_icon'; // Keep separate default for enemies for now
+        const defaultBattleIconSourcePath = 'assets/default_character_ilustration_4_3.png';
+        loadAsset(defaultBattleIconKey, defaultBattleIconSourcePath);
 
-        this.load.image(defaultFaceIconKey, 'assets/default_character_ilustration_face_icon.png');
-        this.load.image(defaultBattleIconKey, 'assets/default_character_ilustration_4_3.png');
-        this.load.image(defaultEnemyIconKey, 'assets/default_enemy_illustration_face_icon.png'); // Load default enemy face icon
+        // This key 'enemy_icon' was used in the original preload for the default enemy face.
+        // The source path is different from the one specified in non-player definitions.
+        const defaultEnemyFaceIconKey = 'enemy_icon';
+        const defaultEnemyFaceIconSourcePath = 'assets/default_enemy_illustration_face_icon.png';
+        loadAsset(defaultEnemyFaceIconKey, defaultEnemyFaceIconSourcePath);
 
-        // --- Preload Specific Character Icons (Face and Battle) ---
-        const loadedIconKeys = new Set([defaultFaceIconKey, defaultBattleIconKey, defaultEnemyIconKey]);
+        // Also load the default enemy battle icon specified in definitions, if different
+        const defaultEnemyBattleIconKey = 'default_enemy_icon'; // Key used in definitions
+        const defaultEnemyBattleIconSourcePath = 'assets/default_enemy_illustration_4_3.png'; // Path from definitions
+        if (defaultEnemyBattleIconKey !== defaultBattleIconKey) { // Avoid reloading if it's the same as player default battle icon
+             loadAsset(defaultEnemyBattleIconKey, defaultEnemyBattleIconSourcePath);
+        }
 
-        // Fetch inventory and team from manager for preloading icons
+
+        // --- Preload Specific Character Icons (Face and Battle) using the helper ---
         const currentInventory = GameDataManager.getInventory();
-        const currentTeamSlots = GameDataManager.getTeamSlots(); // Get slots (includes nulls)
-        const charactersToCheck = [...currentInventory, ...currentTeamSlots.filter(c => c !== null)]; // Combine inventory and non-null team members
+        const currentTeamSlots = GameDataManager.getTeamSlots();
+        const charactersToCheck = [...currentInventory, ...currentTeamSlots.filter(c => c !== null)];
 
         charactersToCheck.forEach(charData => {
             const definition = charData?.definition;
             if (!definition) {
                 console.warn(`Character data in inventory/team missing definition.`);
-                return; // Skip if no definition
+                return;
             }
 
             // Preload specific Face Icon
-            if (definition.faceIconKey && definition.faceIconPath &&
-                definition.faceIconKey !== defaultFaceIconKey &&
-                !loadedIconKeys.has(definition.faceIconKey))
-            {
-                // --- DEBUG LOG ---
-                if (definition.id === 'elzette') { // Log specifically for Elzette
-                    console.log(`[Preload Debug] Attempting to load Elzette face icon: Key='${definition.faceIconKey}', Path='${definition.faceIconPath}'`);
-                }
-                console.log(`Preloading specific face icon: ${definition.faceIconKey} from ${definition.faceIconPath}`);
-                this.load.image(definition.faceIconKey, definition.faceIconPath);
-                loadedIconKeys.add(definition.faceIconKey);
-            } else if (definition.faceIconKey && definition.faceIconKey !== defaultFaceIconKey && !definition.faceIconPath) {
+            if (definition.faceIconKey && definition.faceIconPath) {
+                 // --- DEBUG LOG ---
+                 if (definition.id === 'elzette') {
+                     console.log(`[Preload Debug] Checking Elzette face icon: Key='${definition.faceIconKey}', Path='${definition.faceIconPath}'`);
+                 }
+                 loadAsset(definition.faceIconKey, definition.faceIconPath);
+            } else if (definition.faceIconKey && !definition.faceIconPath) {
                  console.warn(`Character ${charData.name} has specific faceIconKey '${definition.faceIconKey}' but no faceIconPath defined.`);
             }
 
             // Preload specific Battle Icon
-            if (definition.battleIconKey && definition.battleIconPath &&
-                definition.battleIconKey !== defaultBattleIconKey &&
-                !loadedIconKeys.has(definition.battleIconKey))
-            {
-                console.log(`Preloading specific battle icon: ${definition.battleIconKey} from ${definition.battleIconPath}`);
-                this.load.image(definition.battleIconKey, definition.battleIconPath);
-                loadedIconKeys.add(definition.battleIconKey);
-            } else if (definition.battleIconKey && definition.battleIconKey !== defaultBattleIconKey && !definition.battleIconPath) {
+            if (definition.battleIconKey && definition.battleIconPath) {
+                 loadAsset(definition.battleIconKey, definition.battleIconPath);
+            } else if (definition.battleIconKey && !definition.battleIconPath) {
                  console.warn(`Character ${charData.name} has specific battleIconKey '${definition.battleIconKey}' but no battleIconPath defined.`);
             }
         });
 
-        // Note: Enemy icons are currently handled separately using 'enemy_icon'.
-        // If enemies need specific icons later, similar logic would apply to enemyTeam data.
+        console.log('PreBattleSetupScene: preload() finished queuing assets.');
     }
 
     create() { // Removed 'data' parameter

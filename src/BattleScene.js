@@ -18,60 +18,107 @@ class BattleScene extends Phaser.Scene {
 
     preload() {
         console.log("BattleScene: Preloading assets for current battle...");
-        const loadedIconKeys = new Set();
+        const manifest = this.registry.get('assetManifest');
 
-        // Helper function to load asset if valid and not already loaded
-        const loadIcon = (definition) => {
-            if (definition && definition.battleIconKey && definition.battleIconPath && !loadedIconKeys.has(definition.battleIconKey)) {
-                console.log(` - Loading icon: ${definition.battleIconKey} from ${definition.battleIconPath}`);
-                this.load.image(definition.battleIconKey, definition.battleIconPath);
-                loadedIconKeys.add(definition.battleIconKey);
-            } else if (definition && definition.battleIconKey && !definition.battleIconPath) {
-                 console.warn(`BattleScene Preload: Character definition '${definition.id}' has battleIconKey but no battleIconPath.`);
+        if (!manifest) {
+            console.error('BattleScene: Asset Manifest not found in registry!');
+            // Optionally display an error message on screen
+            this.add.text(this.cameras.main.width / 2, this.cameras.main.height / 2,
+                'Error: Asset Manifest missing!',
+                { fill: '#ff0000', fontSize: '24px' }
+            ).setOrigin(0.5);
+            return; // Stop preloading if manifest is missing
+        }
+        console.log('BattleScene: Found Asset Manifest:', manifest);
+
+        const loadedIconKeys = new Set(); // Keep track of keys we've started loading
+
+        // Helper function to load an image using the manifest
+        const loadAssetFromDefinition = (definition) => {
+            if (!definition) return;
+
+            const key = definition.battleIconKey;
+            const sourcePath = definition.battleIconPath;
+
+            if (!key || !sourcePath) {
+                // console.warn(`loadAssetFromDefinition: Missing key or sourcePath for definition ID '${definition.id}'.`);
+                return;
+            }
+            if (loadedIconKeys.has(key)) {
+                // console.log(`loadAssetFromDefinition: Key '${key}' already loading/loaded.`);
+                return; // Don't load the same key multiple times
+            }
+
+            // --- Manifest Key Normalization (copied from PreBattleSetupScene) ---
+            const possibleKeys = [
+                sourcePath,                 // e.g., 'assets/image.png'
+                `./${sourcePath}`,          // e.g., './assets/image.png'
+                sourcePath.startsWith('src/') ? sourcePath : `src/${sourcePath}` // e.g., 'src/assets/image.png'
+            ];
+
+            let hashedPath = null;
+            for (const pKey of possibleKeys) {
+                if (manifest[pKey]) {
+                    hashedPath = manifest[pKey];
+                    break;
+                }
+            }
+
+            if (hashedPath) {
+                console.log(`BattleScene Preloading: Key='${key}', Source='${sourcePath}', Hashed='${hashedPath}'`);
+                this.load.image(key, hashedPath);
+                loadedIconKeys.add(key); // Mark as loading
+            } else {
+                console.error(`BattleScene: Asset key '${key}' with source path '${sourcePath}' not found in manifest for definition '${definition.id}'! Tried keys:`, possibleKeys);
+                // Optionally load a fallback/error image here
+                // Fallback to default battle icon path if manifest lookup fails?
+                const defaultBattleIconSourcePath = 'assets/default_character_ilustration_4_3.png';
+                let fallbackHashedPath = null;
+                 for (const pKey of [defaultBattleIconSourcePath, `./${defaultBattleIconSourcePath}`, `src/${defaultBattleIconSourcePath}`]) {
+                     if (manifest[pKey]) {
+                         fallbackHashedPath = manifest[pKey];
+                         break;
+                     }
+                 }
+                 if (fallbackHashedPath) {
+                     console.warn(`BattleScene: Loading fallback default battle icon for key '${key}'`);
+                     this.load.image(key, fallbackHashedPath); // Use the original key but the default hashed path
+                     loadedIconKeys.add(key);
+                 } else {
+                     console.error(`BattleScene: Fallback default battle icon source path '${defaultBattleIconSourcePath}' also not found in manifest!`);
+                 }
             }
         };
 
         // --- 1. Determine Assets for Player Team ---
-        const playerTeamData = GameDataManager.getActiveTeam(); // Get player team data
-        console.log(`BattleScene Preload: Loading icons for ${playerTeamData.length} player characters.`);
-        playerTeamData.forEach(charData => {
-            if (charData && charData.definitionId) {
-                try {
-                    // Get definition directly to access icon paths
-                    const definition = getCharacterDefinition(charData.definitionId);
-                    loadIcon(definition);
-                } catch (error) {
-                    console.error(`BattleScene Preload: Error getting definition for player character ID '${charData.definitionId}':`, error);
-                }
+        // Use getCurrentBattlePlayerTeam which holds the BattleCharacter instances prepared by PreBattleSetupScene
+        const playerTeam = GameDataManager.getCurrentBattlePlayerTeam();
+        console.log(`BattleScene Preload: Loading icons for ${playerTeam.length} player characters.`);
+        playerTeam.forEach(battleChar => {
+            if (battleChar && battleChar.definition) { // BattleCharacter instances should have definition attached
+                loadAssetFromDefinition(battleChar.definition);
+            } else {
+                 console.warn("BattleScene Preload: Player team member missing or missing definition:", battleChar);
             }
         });
 
         // --- 2. Determine Assets for Enemy Team ---
-        // Get battle index from GameDataManager *before* create receives it
-        const battleIndex = GameDataManager.getCurrentBattleIndex();
-        const currentBattleConfig = battlesData[battleIndex];
+        // Use getCurrentBattleEnemyTeam which holds the BattleCharacter instances prepared by PreBattleSetupScene
+        const enemyTeam = GameDataManager.getCurrentBattleEnemyTeam();
+        const battleIndex = GameDataManager.getCurrentBattleIndex(); // For logging context
+        console.log(`BattleScene Preload: Loading icons for ${enemyTeam.length} enemy characters in battle ${battleIndex}.`);
+        enemyTeam.forEach(battleChar => {
+             if (battleChar && battleChar.definition) { // BattleCharacter instances should have definition attached
+                loadAssetFromDefinition(battleChar.definition);
+            } else {
+                 console.warn(`BattleScene Preload: Enemy team member missing or missing definition for battle ${battleIndex}:`, battleChar);
+            }
+        });
 
-        if (currentBattleConfig && currentBattleConfig.enemies) {
-            console.log(`BattleScene Preload: Loading icons for ${currentBattleConfig.enemies.length} enemy types in battle ${battleIndex}.`);
-            currentBattleConfig.enemies.forEach(enemyConfig => {
-                if (enemyConfig.type) {
-                    const enemyId = enemyConfig.type.toLowerCase();
-                    try {
-                        const definition = getCharacterDefinition(enemyId);
-                        loadIcon(definition);
-                    } catch (error) {
-                        console.error(`BattleScene Preload: Error getting definition for enemy type '${enemyId}':`, error);
-                    }
-                }
-            });
-        } else {
-             console.warn(`BattleScene Preload: Could not find enemy configuration for battle index ${battleIndex}.`);
-        }
+        // --- Default Icon Loading Removed (Handled by PreBattleSetupScene) ---
 
-        // --- Default Icon Loading Removed ---
-
-        console.log("BattleScene: Preload finished.");
-        // Load other assets like skill icons if needed
+        console.log("BattleScene: Preload finished queuing assets.");
+        // Load other assets like skill effect spritesheets or audio here if needed, using the manifest lookup
     }
 
     create() { // Removed 'data' parameter
@@ -134,8 +181,54 @@ class BattleScene extends Phaser.Scene {
         // Display turn counter
         this.turnText = this.add.text(this.cameras.main.width / 2, 80, `Turn: ${this.turnCounter}`, { fontSize: '100px', fill: '#fff' }).setOrigin(0.5);
 
+        // --- Handle Background Loaded Audio (Structure only) ---
+        this.setupBackgroundMusic(); // Call the setup function
+
         // Start the battle
         this.time.delayedCall(1000, this.startTurn, [], this);
+    }
+
+    /**
+     * Checks if background music is loaded and plays it,
+     * or sets up a listener to play it when loaded.
+     * NOTE: Currently commented out as assets are not yet available/imported/loaded.
+     */
+    setupBackgroundMusic() {
+        const musicKey = 'battle_music_loop';
+        console.log(`BattleScene: Checking for background music ('${musicKey}')...`);
+
+        /* --- SECTION TO UNCOMMENT WHEN BACKGROUND LOADING IS ENABLED ---
+        // Check if the sound is already decoded and ready in the cache
+        if (this.cache.audio.has(musicKey)) {
+            console.log(` - Background music '${musicKey}' already loaded.`);
+            // Play it if not already playing (e.g., if returning to scene)
+            // if (!this.isBattleOver && this.sound.get(musicKey) === null) {
+            //     this.sound.play(musicKey, { loop: true, volume: 0.5 });
+            //     console.log("Battle music started (already cached).");
+            // }
+        } else {
+            // If not loaded, listen for the specific file completion event from the loader
+            console.log(` - Background music '${musicKey}' not loaded yet. Setting up listener.`);
+            // this.load.once(`filecomplete-audio-${musicKey}`, (key, type, data) => {
+            //     console.log(`   - Background music '${key}' finished loading.`);
+            //     // Play it now that it's loaded (if battle isn't over)
+            //     if (!this.isBattleOver && this.sound.get(key) === null) {
+            //         this.sound.play(key, { loop: true, volume: 0.5 });
+            //         console.log("Battle music started (after loading).");
+            //     }
+            // });
+
+            // Optional: Check if the loader is even active. If PreloaderScene didn't find the asset,
+            // the 'filecomplete' event might never fire.
+            // if (!this.load.isLoading()) {
+            //    console.warn(` - Loader is not active. '${musicKey}' might not have been queued for background loading.`);
+            // }
+        }
+        --- END SECTION TO UNCOMMENT --- */
+
+        // Similarly, you could check/listen for SFX like 'basic_attack' here if needed,
+        // though SFX are often just checked before playing via this.sound.play('basic_attack')
+        // without needing complex listeners unless you need confirmation they are cached.
     }
 
     startTurn() {

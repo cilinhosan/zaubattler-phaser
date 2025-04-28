@@ -1,9 +1,11 @@
 import Phaser from "phaser";
+import './assetImports.js'; // Import for Webpack to process assets
+import PreloaderScene from './PreloaderScene'; // Import the new PreloaderScene
 import MenuScreenScene from './MenuScreenScene';
 import BattleScene from './BattleScene';
 import PreBattleSetupScene from './PreBattleSetupScene';
 import EndGameScene from './EndGameScene'; // Import the new scene
-import StartGameScene from './StartGameScene'; // Import the new StartGameScene
+import StartGameScene from './StartGameScene'; // Keep StartGameScene for now, might be removed later if unused
 
 const config = {
     type: Phaser.AUTO,
@@ -23,7 +25,7 @@ const config = {
             debug: false
         }
     },
-    // StartGameScene is now the first scene loaded
-    scene: [StartGameScene, MenuScreenScene, PreBattleSetupScene, BattleScene, EndGameScene]
+    // PreloaderScene is now the first scene loaded
+    scene: [PreloaderScene, StartGameScene, MenuScreenScene, PreBattleSetupScene, BattleScene, EndGameScene] // Add PreloaderScene first
 };
 const game = new Phaser.Game(config);

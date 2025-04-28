@@ -1,22 +1,16 @@
 const { merge } = require('webpack-merge');
 const common = require('./webpack.common.js');
-const CopyPlugin = require("copy-webpack-plugin");
+// WebpackManifestPlugin is now in common.js, no need to import or configure here
 
 module.exports = merge(common, {
   mode: 'production',
   // devtool: 'source-map', // Optional: for production debugging
-  plugins: [
-    new CopyPlugin({
-        patterns: [
-            // Copy assets that are NOT directly imported/required by JS/CSS
-            // asset/resource handles imported assets automatically
-            { from: "./assets", to: "assets", globOptions: { ignore: ["**/.*"] } }, // Copy everything from assets to dist/assets
-        ],
-    }),
-  ],
+  // plugins array removed - ManifestPlugin is in common.js
   output: {
-    filename: '[name].[contenthash].bundle.js', // Use contenthash for caching
+    filename: '[name].[contenthash].bundle.js', // Use contenthash for JS caching
     publicPath: '/', // Use root path for assets
+    // Use contenthash for asset caching in production
+    assetModuleFilename: 'assets/[contenthash][ext][query]'
   },
   // Add optimization options if needed
   // optimization: {
