@@ -74,39 +74,31 @@ class BattleScene extends Phaser.Scene {
         // Load other assets like skill icons if needed
     }
 
-    create(data) {
+    create() { // Removed 'data' parameter
         // Set background color
         this.cameras.main.setBackgroundColor('#1a1a1a'); // Dark grey color
 
-        // Get battle index from data
-        this.battleIndex = data.battleIndex;
+        // --- Get Prepared Teams and Battle Index from GameDataManager ---
+        this.playerTeam = GameDataManager.getCurrentBattlePlayerTeam();
+        this.enemyTeam = GameDataManager.getCurrentBattleEnemyTeam();
+        this.battleIndex = GameDataManager.getCurrentBattleIndex(); // Get index for reference if needed
 
-        // --- Get Player Team from GameDataManager ---
-        const activePlayerTeamData = GameDataManager.getActiveTeam(); // Get array of character data objects
-        // Convert player team data to BattleCharacter instances for this battle
-        this.playerTeam = activePlayerTeamData.map(charData => {
-            // Assuming charData has definitionId and level
-            return new BattleCharacter(charData.definitionId, charData.level || 1, 'player');
-        });
-        console.log("BattleScene: Player team loaded from GameDataManager:", this.playerTeam.map(c=>c.name));
-
-        // --- Create Enemy Team based on battleIndex ---
-        const currentBattle = battlesData[this.battleIndex];
-        if (!currentBattle) {
-             console.error(`BattleScene: Invalid battleIndex ${this.battleIndex}. Cannot load enemies.`);
-             // Handle error - maybe go back to menu?
-             this.scene.start('MenuScreenScene');
-             return;
+        if (!this.playerTeam || this.playerTeam.length === 0) {
+            console.error("BattleScene Error: Player team not found or empty in GameDataManager!");
+            // Handle error - maybe go back to menu?
+            this.scene.start('MenuScreenScene');
+            return;
         }
-        this.enemyTeam = currentBattle.enemies.map(enemyConfig => {
-            const definition = getCharacterDefinition(enemyConfig.type.toLowerCase());
-            if (!definition) {
-                console.error(`BattleScene: Character definition not found for enemy type: ${enemyConfig.type}. Skipping enemy.`);
-                return null;
-            }
-            return new BattleCharacter(definition.id, 1, 'enemy'); // Level 1, enemy team
-        }).filter(character => character !== null);
-        console.log("BattleScene: Enemy team created:", this.enemyTeam.map(c=>c.name));
+        if (!this.enemyTeam || this.enemyTeam.length === 0) {
+            console.error("BattleScene Error: Enemy team not found or empty in GameDataManager!");
+            // Handle error - maybe go back to menu?
+            this.scene.start('MenuScreenScene');
+            return;
+        }
+
+        console.log("BattleScene: Loaded Player Team from GameDataManager:", this.playerTeam.map(c => c.name));
+        console.log("BattleScene: Loaded Enemy Team from GameDataManager:", this.enemyTeam.map(c => c.name));
+        console.log("BattleScene: Current Battle Index:", this.battleIndex);
 
 
         // Create a combined array of all characters for this battle instance
@@ -122,7 +114,10 @@ class BattleScene extends Phaser.Scene {
         for (const char of this.allBattleCharacters) {
             // Determine the index within the specific team array
             const teamIndex = char.team === 'player' ? this.playerTeam.indexOf(char) : this.enemyTeam.indexOf(char);
-            const display = new CharacterBattleDisplay(this, char, char.team, teamIndex);
+            // Get the size of the team this character belongs to
+            const teamSize = char.team === 'player' ? this.playerTeam.length : this.enemyTeam.length;
+            // Pass teamSize as the 5th argument
+            const display = new CharacterBattleDisplay(this, char, char.team, teamIndex, teamSize);
             char.display = display; // Assign the display back to the character
             if (char.isDefeated) {
                  display.hide(); // Hide if defeated

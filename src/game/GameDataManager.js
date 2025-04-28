@@ -11,6 +11,11 @@ class GameDataManager {
         // Array representing 5 team slots, holding references to inventory character objects or null
         this.teamSlots = [null, null, null, null, null];
         this.currentBattleIndex = 0; // Track the current battle
+
+        // --- Properties to hold prepared teams for the upcoming battle ---
+        this.currentBattlePlayerTeam = null; // Array of BattleCharacter instances
+        this.currentBattleEnemyTeam = null; // Array of BattleCharacter instances
+
         GameDataManager.instance = this;
         console.log("GameDataManager initialized.");
     }
@@ -125,6 +130,27 @@ class GameDataManager {
         console.log(`GameDataManager: Battle index incremented to ${this.currentBattleIndex}`);
     }
 
+    // --- Battle Team Preparation ---
+    setCurrentBattlePlayerTeam(team) {
+        console.log("[GameDataManager] Setting current battle player team:", team?.map(c => c.name));
+        this.currentBattlePlayerTeam = team;
+    }
+
+    getCurrentBattlePlayerTeam() {
+        // console.log("[GameDataManager] Getting current battle player team:", this.currentBattlePlayerTeam?.map(c => c.name));
+        return this.currentBattlePlayerTeam;
+    }
+
+    setCurrentBattleEnemyTeam(team) {
+        console.log("[GameDataManager] Setting current battle enemy team:", team?.map(c => c.name));
+        this.currentBattleEnemyTeam = team;
+    }
+
+    getCurrentBattleEnemyTeam() {
+        // console.log("[GameDataManager] Getting current battle enemy team:", this.currentBattleEnemyTeam?.map(c => c.name));
+        return this.currentBattleEnemyTeam;
+    }
+
     /**
      * Resets the inventory, team slots, and battle index to their initial state.
      * Should be called when starting a new game or returning to the main menu.
@@ -133,7 +159,10 @@ class GameDataManager {
         this.inventory = [];
         this.teamSlots = [null, null, null, null, null];
         this.currentBattleIndex = 0; // Reset battle index as well
-        console.log("GameDataManager: State reset (inventory, team, and battle index cleared).");
+        // Also clear prepared battle teams
+        this.currentBattlePlayerTeam = null;
+        this.currentBattleEnemyTeam = null;
+        console.log("GameDataManager: State reset (inventory, team, battle index, and prepared teams cleared).");
     }
 }
 

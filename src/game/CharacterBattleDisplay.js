@@ -16,107 +16,108 @@ const ENEMY_START_Y = 400; // Adjusted for 1080p
 const HP_BAR_HEIGHT = 10;
 const HP_BAR_Y_OFFSET = 12.5; // Decreased by half (25 / 2)
 
-class CharacterBattleDisplay { // Renamed class
-    constructor(scene, character, teamType, slotIndex) {
+class CharacterBattleDisplay {
+    constructor(scene, character, teamType, teamIndex, teamSize) { // Added teamSize
         this.scene = scene;
         this.character = character;
         this.teamType = teamType;
-        this.slotIndex = slotIndex;
+        this.teamIndex = teamIndex;
+        this.teamSize = teamSize; // Store team size
+        this.isDestroyed = false; // Initialize destroyed flag
 
-        // Calculate position based on team and slot index
-        const startX = teamType === 'player' ? PLAYER_START_X : ENEMY_START_X;
-        const startY = teamType === 'player' ? PLAYER_START_Y : ENEMY_START_Y;
+        // --- Calculate Actual Display Box Dimensions ---
+        const targetIconWidth = BOX_WIDTH * 0.9;
+        const targetIconHeight = BOX_HEIGHT * 0.9;
+        this.actualBoxWidth = targetIconWidth + 2; // Store the calculated width
+        this.actualBoxHeight = targetIconHeight + 2; // Store the calculated height
 
-        this.rectX = startX;
-        this.rectY = startY + (BOX_HEIGHT + PADDING) * slotIndex;
-        this.rectWidth = BOX_WIDTH;
-        this.rectHeight = BOX_HEIGHT;
+        // --- Calculate Centered Vertical Position ---
+        const totalHeight = (this.teamSize * this.actualBoxHeight) + (Math.max(0, this.teamSize - 1) * PADDING);
+        const screenCenterY = this.scene.cameras.main.height / 2; // Center of the screen vertically
+        const groupStartY = screenCenterY - totalHeight / 2; // Top Y for the first character's box
 
+        // Calculate the final absolute top-left Y for *this specific character's box*
+        this.finalBoxY = groupStartY + (this.teamIndex * (this.actualBoxHeight + PADDING));
+
+        // --- Calculate Horizontal Position ---
+        this.finalBoxX = teamType === 'player' ? PLAYER_START_X : ENEMY_START_X;
+
+        // Store base dimensions if needed elsewhere
+        this.baseRectWidth = BOX_WIDTH;
+        this.baseRectHeight = BOX_HEIGHT;
+
+        // Create the visual elements using the calculated absolute positions
         this.createDisplayElements();
+        this.updateHpDisplay(); // Update HP after creation
     }
 
     createDisplayElements() {
-        // --- Calculate Target Dimensions ---
-        const targetIconWidth = this.rectWidth * 0.9; // Based on original BOX_WIDTH
-        const targetIconHeight = this.rectHeight * 0.9; // Based on original BOX_HEIGHT
-        const boxWidth = targetIconWidth + 2; // Add 1px border on each side
-        const boxHeight = targetIconHeight + 2; // Add 1px border on each side
+        // --- Use Dimensions and Absolute Positions Calculated in Constructor ---
+        const boxWidth = this.actualBoxWidth;
+        const boxHeight = this.actualBoxHeight;
+        const boxX = this.finalBoxX; // Use final absolute X
+        const boxY = this.finalBoxY; // Use final absolute Y
 
-        // --- Calculate Centered Positions ---
-        // Use original rectX/rectY for consistent grid positioning calculation
-        const centerX = this.rectX + this.rectWidth / 2;
-        const centerY = this.rectY + this.rectHeight / 2;
+        const targetIconWidth = boxWidth - 2;
+        const targetIconHeight = boxHeight - 2;
+        const centerX = boxX + boxWidth / 2;
+        const centerY = boxY + boxHeight / 2;
 
-        // Calculate top-left for the new tighter box based on center
-        const boxX = centerX - boxWidth / 2;
-        const boxY = centerY - boxHeight / 2;
+        // --- Create Display Elements Directly on Scene ---
 
-        // --- Create Display Elements ---
+        // Graphics for the box
+        this.graphics = this.scene.add.graphics({ x: boxX, y: boxY }); // Position graphics object
+        this.graphics.lineStyle(1, 0xffffff, 1);
+        this.graphics.strokeRect(0, 0, boxWidth, boxHeight); // Draw relative to its position
 
-        // Graphics for the box (Positioned at the new top-left)
-        this.graphics = this.scene.add.graphics();
-        this.graphics.setPosition(boxX, boxY); // Position graphics container
-        this.graphics.lineStyle(1, 0xffffff, 1); // Use 1px line for tighter look
-        this.graphics.strokeRect(0, 0, boxWidth, boxHeight); // Draw box relative to container
-
-        // Image for the character battle icon (Positioned at the center)
-        // Assumes the icon was loaded in BattleScene.preload
-        // Access the key via the definition stored on the BattleCharacter instance
-        const iconKey = this.character.definition?.battleIconKey; // Use optional chaining for safety
+        // Image for the character battle icon
+        const iconKey = this.character.definition?.battleIconKey;
         if (!iconKey) {
             console.error(`CharacterBattleDisplay Error: Character ${this.character.name} definition is missing battleIconKey!`);
             this.icon = null;
         } else {
             console.log(`CharacterBattleDisplay: Attempting to create image for ${this.character.name} with key: ${iconKey}`);
-            // Position icon at the calculated center
-            this.icon = this.scene.add.image(centerX, centerY, iconKey);
+            this.icon = this.scene.add.image(centerX, centerY, iconKey); // Position at absolute center
 
             if (this.icon && this.icon.texture && this.icon.texture.key === iconKey) {
-                 console.log(`  - Success: Image created for ${this.character.name}. Texture key: ${this.icon.texture.key}, Size: ${this.icon.width}x${this.icon.height}`);
-                 // Scale the icon to the target size
+                 console.log(`  - Success: Image created for ${this.character.name}.`);
                  this.icon.setDisplaySize(targetIconWidth, targetIconHeight);
                  console.log(`  - Scaled display size: ${this.icon.displayWidth}x${this.icon.displayHeight}`);
             } else if (this.icon) {
-                 console.error(`  - Error: Image created for ${this.character.name}, BUT texture key is wrong or missing! Expected: ${iconKey}, Got: ${this.icon.texture?.key}`);
-                 if (this.scene.textures.exists(iconKey)) {
-                     console.error(`    - Texture '${iconKey}' EXISTS in manager, but wasn't applied correctly?`);
-                 } else {
-                     console.error(`    - Texture '${iconKey}' DOES NOT EXIST in manager. Loading issue in BattleScene.preload?`);
-                 }
+                 console.error(`  - Error: Image created for ${this.character.name}, BUT texture key is wrong or missing!`);
                  this.icon.setVisible(false);
             } else {
-                 console.error(`  - Error: Failed to create image object for ${this.character.name} with key ${iconKey}.`);
+                 console.error(`  - Error: Failed to create image object for ${this.character.name}.`);
             }
         }
 
-        // HP bar (Positioned below the new box)
-        const hpBarX = boxX; // Align with the box's left edge
-        const hpBarY = boxY + boxHeight + HP_BAR_Y_OFFSET; // Position below the box
-        const hpBarWidth = boxWidth; // Match the box width
+        // HP bar
+        const hpBarX = boxX; // Absolute X
+        const hpBarY = boxY + boxHeight + HP_BAR_Y_OFFSET; // Absolute Y
+        const hpBarWidth = boxWidth;
 
-        this.hpBar = this.scene.add.graphics();
-        // Position the HP bar graphics object itself
-        this.hpBar.setPosition(hpBarX, hpBarY);
-        this.hpBar.fillStyle(0x00ff00, 1); // Green color for HP
-        // Draw relative to the graphics object's position (0, 0)
-        this.hpBar.fillRect(0, 0, hpBarWidth, HP_BAR_HEIGHT);
+        this.hpBar = this.scene.add.graphics({ x: hpBarX, y: hpBarY }); // Position graphics object
+        this.hpBar.fillStyle(0x00ff00, 1);
+        this.hpBar.fillRect(0, 0, hpBarWidth, HP_BAR_HEIGHT); // Draw relative to its position
 
-        // HP text - Centered on the new HP bar
+        // HP text
         const initialHp = typeof this.character.getCurrentHp === 'function' ? this.character.getCurrentHp() : '?';
         const initialMaxHp = typeof this.character.getMaxHp === 'function' ? this.character.getMaxHp() : '?';
-        this.hpText = this.scene.add.text(hpBarX + hpBarWidth / 2, hpBarY + HP_BAR_HEIGHT / 2, `${initialHp}/${initialMaxHp}`, {
-            fontSize: '30px', // Increased font size for larger display
-            fill: '#fff'
-        })
+        this.hpText = this.scene.add.text(
+            hpBarX + hpBarWidth / 2, // Absolute center X
+            hpBarY + HP_BAR_HEIGHT / 2, // Absolute center Y
+            `${initialHp}/${initialMaxHp}`,
+            { fontSize: '30px', fill: '#fff' }
+        )
         .setOrigin(0.5)
-        .setStroke('#000000', 4); // Black stroke
+        .setStroke('#000000', 4);
 
-        // Store references
+        // Store references on the character object (as before)
         this.character.graphics = this.graphics;
         this.character.icon = this.icon;
         this.character.hpBar = this.hpBar;
         this.character.hpText = this.hpText;
-        // Store the *actual* box dimensions used for display, not the original constants
+        // Store the actual box dimensions used for display
         this.character.rectWidth = boxWidth;
         this.character.rectHeight = boxHeight;
     }
@@ -135,65 +136,66 @@ class CharacterBattleDisplay { // Renamed class
         const currentHp = this.character.getCurrentHp();
         const maxHp = this.character.getMaxHp();
         const hpPercentage = maxHp > 0 ? Math.max(0, currentHp / maxHp) : 0; // Avoid division by zero
-        // Use the actual displayed box width for HP bar calculation
-        const currentBoxWidth = this.character.rectWidth || this.rectWidth; // Fallback just in case
+        // Use the stored actual box width
+        const currentBoxWidth = this.actualBoxWidth;
         const hpBarWidthValue = currentBoxWidth * hpPercentage;
 
-        // Get the current position of the HP bar graphics object
-        const hpBarX = this.hpBar.x; // Should be the same as boxX
-        const hpBarY = this.hpBar.y; // Should be boxY + boxHeight + HP_BAR_Y_OFFSET
-
+        // HP bar graphics object is already positioned absolutely
         this.hpBar.clear();
         this.hpBar.fillStyle(0x00ff00, 1);
-        // Draw relative to the hpBar graphics object's position (which is already set)
-        this.hpBar.fillRect(0, 0, hpBarWidthValue, HP_BAR_HEIGHT);
+        this.hpBar.fillRect(0, 0, hpBarWidthValue, HP_BAR_HEIGHT); // Draw relative to hpBar's origin
 
+        // Update and re-center HP text (using absolute position)
         this.hpText.setText(`${currentHp}/${maxHp}`);
-        // Recenter text on the potentially changed HP bar
-        this.hpText.setPosition(hpBarX + currentBoxWidth / 2, hpBarY + HP_BAR_HEIGHT / 2);
+        const hpBarX = this.hpBar.x; // Get absolute X
+        const hpBarY = this.hpBar.y; // Get absolute Y
+        this.hpText.setPosition(
+            hpBarX + currentBoxWidth / 2, // Absolute center X
+            hpBarY + HP_BAR_HEIGHT / 2  // Absolute center Y
+        );
     }
 
     shake() {
         if (!this.graphics || this.graphics.isDestroyed) return;
 
-        const originalGraphicsX = this.graphics.x;
+        // Use the stored absolute position as the base
+        const originalGraphicsX = this.finalBoxX;
         const originalBorderColor = 0xffffff;
         const hitBorderColor = 0xff0000;
         const borderThickness = 2;
 
         // Change border to red immediately
-        this.highlightBorder(hitBorderColor, borderThickness); // Call with correct parameters
+        this.highlightBorder(hitBorderColor, borderThickness);
 
+        // Tween the graphics object's absolute position
         this.scene.tweens.add({
             targets: this.graphics,
-            x: { from: originalGraphicsX, to: originalGraphicsX + 10 },
+            x: { from: originalGraphicsX, to: originalGraphicsX + 10 }, // Tween absolute X
             ease: 'Sine.easeInOut',
             duration: 50,
             repeat: 3,
             yoyo: true,
             onComplete: () => {
-                // Reset position and border color after shake
-                if (this.graphics && !this.graphics.isDestroyed) {
-                    this.graphics.x = originalGraphicsX;
-                    // Put back the border reset to default white
-                    this.highlightBorder(originalBorderColor, borderThickness);
+                if (this.graphics && !this.graphics.destroyed) {
+                    this.graphics.x = originalGraphicsX; // Reset absolute X
+                    this.highlightBorder(originalBorderColor, borderThickness); // Reset border
                 }
             }
         });
 
-        // Shake the icon as well (check if icon exists)
+        // Shake the icon as well (using its absolute center position)
         if (this.icon && this.icon.scene) {
-            const originalIconX = this.icon.x;
+            const originalIconX = this.finalBoxX + this.actualBoxWidth / 2; // Original absolute center X
             this.scene.tweens.add({
                 targets: this.icon,
-                x: { from: originalIconX, to: originalIconX + 10 },
+                x: { from: originalIconX, to: originalIconX + 10 }, // Tween absolute X
                 ease: 'Sine.easeInOut',
                 duration: 50,
                 repeat: 3,
                 yoyo: true,
                 onComplete: () => {
                     if (this.icon && this.icon.scene) {
-                        this.icon.x = originalIconX;
+                        this.icon.x = originalIconX; // Reset absolute X
                     }
                 }
             });
@@ -203,12 +205,13 @@ class CharacterBattleDisplay { // Renamed class
     // Modified highlightBorder to operate on this.graphics
     highlightBorder(color, thickness = 2) {
         if (!this.graphics || this.graphics.isDestroyed) return;
-        // Use the actual displayed box dimensions
-        const currentBoxWidth = this.character.rectWidth || this.rectWidth;
-        const currentBoxHeight = this.character.rectHeight || this.rectHeight;
+        // Use the stored actual dimensions
+        const currentBoxWidth = this.actualBoxWidth;
+        const currentBoxHeight = this.actualBoxHeight;
+        // Graphics object is already positioned absolutely
         this.graphics.clear();
         this.graphics.lineStyle(thickness, color, 1);
-        this.graphics.strokeRect(0, 0, currentBoxWidth, currentBoxHeight);
+        this.graphics.strokeRect(0, 0, currentBoxWidth, currentBoxHeight); // Draw relative to its origin
     }
 
     // New method to clear the highlight and revert to default border

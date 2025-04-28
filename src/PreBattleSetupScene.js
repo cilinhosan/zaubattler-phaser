@@ -286,17 +286,16 @@ class PreBattleSetupScene extends Phaser.Scene {
 
         startBattleButton.on('pointerdown', () => {
             // --- Get Final Player Team Slot Data ---
-            // Get the data from each visual slot (can be character data or null)
             const finalTeamSlotData = this.playerTeamDisplays
                 .map(displayObject => displayObject ? displayObject.data : null);
 
-            // --- Save Final Team to GameDataManager ---
+            // --- Save Final Team Composition (Slot Data) to GameDataManager ---
             GameDataManager.updateTeam(finalTeamSlotData);
-            console.log("PreBattleSetupScene: Final team saved to GameDataManager.");
+            console.log("PreBattleSetupScene: Final team composition saved to GameDataManager.");
 
-            // --- Get Active Team for Battle ---
-            // Filter out empty slots for the actual battle team
-            const activePlayerTeamData = finalTeamSlotData.filter(charData => charData !== null);
+            // --- Prepare Player BattleCharacter Instances ---
+            console.log("PreBattleSetupScene: Preparing player BattleCharacter instances...");
+            const activePlayerTeamData = finalTeamSlotData.filter(charData => charData !== null); // Filter out empty slots
 
             if (activePlayerTeamData.length === 0) {
                 console.error("Player team is empty. Cannot start battle.");
@@ -304,36 +303,46 @@ class PreBattleSetupScene extends Phaser.Scene {
                 return;
             }
 
-            // --- Convert active team data to BattleCharacter instances ---
-            const playerBattleTeam = activePlayerTeamData.map(charData => {
-                 if (!charData || !charData.definitionId) { // Should not happen if data is valid
-                     console.error("Invalid character data in final team slot:", charData);
-                     return null; // Skip invalid character data
-                 }
-                 // Create a new BattleCharacter for the battle
-                 // Ensure level is correctly sourced if available (e.g., charData.level)
-                 return new BattleCharacter(charData.definitionId, charData.level || 1, 'player');
-             }); // No need to filter nulls here if activePlayerTeamData is already filtered
+            const preparedPlayerTeam = activePlayerTeamData.map(charData => {
+                try {
+                    if (!charData || !charData.definitionId) {
+                        throw new Error("Invalid character data in final team slot");
+                    }
+                    // Create a new BattleCharacter for the battle
+                    return new BattleCharacter(charData.definitionId, charData.level || 1, 'player');
+                } catch (error) {
+                    console.error(`Error creating BattleCharacter for player ${charData?.name}:`, error);
+                    return null; // Skip if creation fails
+                }
+            }).filter(bc => bc !== null); // Filter out any creation failures
 
-             if (playerBattleTeam.length !== activePlayerTeamData.length) {
-                 console.warn("Some characters could not be converted for battle.");
-                 // Decide if battle should proceed with partial team
-             }
-
-             if (playerBattleTeam.length === 0) {
-                 console.error("Player battle team is empty after conversion. Cannot start battle.");
+            if (preparedPlayerTeam.length === 0) {
+                 console.error("Player battle team is empty after conversion failures. Cannot start battle.");
                  return;
-             }
+            }
+            if (preparedPlayerTeam.length < activePlayerTeamData.length) {
+                 console.warn("Some player characters could not be prepared for battle.");
+                 // Decide if battle should proceed with partial team? For now, it proceeds.
+            }
 
+            // --- Prepare Enemy BattleCharacter Instances (Already created in _loadAndDisplayBattleData) ---
+            // Ensure this.currentEnemyTeam is populated correctly by _loadAndDisplayBattleData
+            const preparedEnemyTeam = this.currentEnemyTeam || [];
+            console.log("PreBattleSetupScene: Using prepared enemy BattleCharacter instances:", preparedEnemyTeam.map(c => c.name));
 
-            console.log("Starting Battle with Player Team:", playerBattleTeam.map(c => c.name));
-            console.log("Enemy Team:", this.currentEnemyTeam ? this.currentEnemyTeam.map(c => c.name) : 'Not loaded'); // Use stored enemy team safely
+            if (preparedEnemyTeam.length === 0) {
+                console.error("Enemy team is empty (check _loadAndDisplayBattleData). Cannot start battle.");
+                // This indicates an issue earlier in the scene setup
+                return;
+            }
 
-            // Get the *current* battle index when starting
-            const currentBattleIndex = GameDataManager.getCurrentBattleIndex();
+            // --- Store Prepared Teams in GameDataManager ---
+            GameDataManager.setCurrentBattlePlayerTeam(preparedPlayerTeam);
+            GameDataManager.setCurrentBattleEnemyTeam(preparedEnemyTeam);
 
-            // Start BattleScene - Pass the current battle index
-            this.scene.start('BattleScene', { battleIndex: currentBattleIndex }); // Pass index correctly
+            // --- Start Battle Scene (No data needed, it will pull from GameDataManager) ---
+            console.log("Starting Battle Scene...");
+            this.scene.start('BattleScene'); // No longer passing data
         });
 
         // Add a global click listener to hide the popup if clicking outside
