@@ -16,7 +16,7 @@ module.exports = merge(common, {
   ],
   output: {
     filename: '[name].[contenthash].bundle.js', // Use contenthash for caching
-    publicPath: '', // Adjust if deployed to a subfolder
+    publicPath: '/', // Use root path for assets
   },
   // Add optimization options if needed
   // optimization: {
