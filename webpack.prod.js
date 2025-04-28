@@ -10,7 +10,7 @@ module.exports = merge(common, {
         patterns: [
             // Copy assets that are NOT directly imported/required by JS/CSS
             // asset/resource handles imported assets automatically
-            { from: "assets", to: "assets", globOptions: { ignore: ["**/.*"] } }, // Copy everything from assets to dist/assets
+            { from: "./assets", to: "assets", globOptions: { ignore: ["**/.*"] } }, // Copy everything from assets to dist/assets
         ],
     }),
   ],
