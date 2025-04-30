@@ -10,6 +10,10 @@
 /asset-manifest.json
   Cache-Control: no-cache, must-revalidate, max-age=0
 
+# Hashed JS bundle at root (strong caching)
+/*.js
+  Cache-Control: public, max-age=31536000, immutable
+
 # Hashed assets directory (strong caching)
 /assets/*
   Cache-Control: public, max-age=31536000, immutable
