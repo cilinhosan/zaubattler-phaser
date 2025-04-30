@@ -4,6 +4,7 @@ import CharacterBattleDisplay from './game/CharacterBattleDisplay'; // Import Ch
 import GameDataManager from './game/GameDataManager.js'; // Import the GameDataManager singleton
 import BattleCharacter from './game/BattleCharacter.js'; // Needed to create instances
 import { getCharacterDefinition } from './CharacterDefinitionList.js'; // Needed for enemy creation
+import AssetLoader from './AssetLoader.js'; // Import the AssetLoader class
 
 const MAX_SLOTS = 5; // Define max slots per team
 
@@ -31,94 +32,49 @@ class BattleScene extends Phaser.Scene {
         }
         console.log('BattleScene: Found Asset Manifest:', manifest);
 
-        const loadedIconKeys = new Set(); // Keep track of keys we've started loading
+        // --- Instantiate AssetLoader ---
+        const assetLoader = new AssetLoader(this);
+        if (!assetLoader.manifest) {
+            console.error("BattleScene: AssetLoader could not initialize (manifest missing). Stopping preload.");
+            // Optionally display an error message on screen
+            return;
+        }
 
-        // Helper function to load an image using the manifest
-        const loadAssetFromDefinition = (definition) => {
-            if (!definition) return;
-
-            const key = definition.battleIconKey;
-            const sourcePath = definition.battleIconPath;
-
-            if (!key || !sourcePath) {
-                // console.warn(`loadAssetFromDefinition: Missing key or sourcePath for definition ID '${definition.id}'.`);
-                return;
-            }
-            if (loadedIconKeys.has(key)) {
-                // console.log(`loadAssetFromDefinition: Key '${key}' already loading/loaded.`);
-                return; // Don't load the same key multiple times
-            }
-
-            // --- Manifest Key Normalization (copied from PreBattleSetupScene) ---
-            const possibleKeys = [
-                sourcePath,                 // e.g., 'assets/image.png'
-                `./${sourcePath}`,          // e.g., './assets/image.png'
-                sourcePath.startsWith('src/') ? sourcePath : `src/${sourcePath}` // e.g., 'src/assets/image.png'
-            ];
-
-            let hashedPath = null;
-            for (const pKey of possibleKeys) {
-                if (manifest[pKey]) {
-                    hashedPath = manifest[pKey];
-                    break;
-                }
-            }
-
-            if (hashedPath) {
-                console.log(`BattleScene Preloading: Key='${key}', Source='${sourcePath}', Hashed='${hashedPath}'`);
-                this.load.image(key, hashedPath);
-                loadedIconKeys.add(key); // Mark as loading
-            } else {
-                console.error(`BattleScene: Asset key '${key}' with source path '${sourcePath}' not found in manifest for definition '${definition.id}'! Tried keys:`, possibleKeys);
-                // Optionally load a fallback/error image here
-                // Fallback to default battle icon path if manifest lookup fails?
-                const defaultBattleIconSourcePath = 'assets/default_character_ilustration_4_3.png';
-                let fallbackHashedPath = null;
-                 for (const pKey of [defaultBattleIconSourcePath, `./${defaultBattleIconSourcePath}`, `src/${defaultBattleIconSourcePath}`]) {
-                     if (manifest[pKey]) {
-                         fallbackHashedPath = manifest[pKey];
-                         break;
-                     }
-                 }
-                 if (fallbackHashedPath) {
-                     console.warn(`BattleScene: Loading fallback default battle icon for key '${key}'`);
-                     this.load.image(key, fallbackHashedPath); // Use the original key but the default hashed path
-                     loadedIconKeys.add(key);
-                 } else {
-                     console.error(`BattleScene: Fallback default battle icon source path '${defaultBattleIconSourcePath}' also not found in manifest!`);
-                 }
-            }
-        };
-
-        // --- 1. Determine Assets for Player Team ---
-        // Use getCurrentBattlePlayerTeam which holds the BattleCharacter instances prepared by PreBattleSetupScene
+        // --- Determine Assets for Player and Enemy Teams ---
         const playerTeam = GameDataManager.getCurrentBattlePlayerTeam();
-        console.log(`BattleScene Preload: Loading icons for ${playerTeam.length} player characters.`);
-        playerTeam.forEach(battleChar => {
-            if (battleChar && battleChar.definition) { // BattleCharacter instances should have definition attached
-                loadAssetFromDefinition(battleChar.definition);
-            } else {
-                 console.warn("BattleScene Preload: Player team member missing or missing definition:", battleChar);
-            }
-        });
-
-        // --- 2. Determine Assets for Enemy Team ---
-        // Use getCurrentBattleEnemyTeam which holds the BattleCharacter instances prepared by PreBattleSetupScene
         const enemyTeam = GameDataManager.getCurrentBattleEnemyTeam();
-        const battleIndex = GameDataManager.getCurrentBattleIndex(); // For logging context
-        console.log(`BattleScene Preload: Loading icons for ${enemyTeam.length} enemy characters in battle ${battleIndex}.`);
-        enemyTeam.forEach(battleChar => {
-             if (battleChar && battleChar.definition) { // BattleCharacter instances should have definition attached
-                loadAssetFromDefinition(battleChar.definition);
-            } else {
-                 console.warn(`BattleScene Preload: Enemy team member missing or missing definition for battle ${battleIndex}:`, battleChar);
+
+        // Create a Set of unique definition IDs from both teams
+        const uniqueDefinitionIds = new Set();
+        playerTeam.forEach(char => char?.definitionId && uniqueDefinitionIds.add(char.definitionId));
+        enemyTeam.forEach(char => char?.definitionId && uniqueDefinitionIds.add(char.definitionId));
+
+        console.log(`BattleScene Preload: Loading battle icons for ${uniqueDefinitionIds.size} unique character definitions.`);
+
+        // --- Preload Battle Icons using Robust AssetLoader ---
+        uniqueDefinitionIds.forEach(definitionId => {
+            const definition = getCharacterDefinition(definitionId);
+            if (!definition) {
+                console.warn(`BattleScene: Could not find definition for ID '${definitionId}' while preloading assets.`);
+                return; // Skip if definition not found
             }
+
+            // --- Load Battle Icon using Robust AssetLoader ---
+            if (definition.battleIconPath && definition.battleIconKey) {
+                 // Pass the Phaser key and original path from the definition
+                assetLoader.preloadAsset(definition.battleIconKey, definition.battleIconPath, 'image');
+            } else {
+                console.warn(`BattleScene: Definition '${definitionId}' missing battleIconPath or battleIconKey.`);
+            }
+            // Note: Face icons are not needed in BattleScene, so we don't load them here.
         });
 
-        // --- Default Icon Loading Removed (Handled by PreBattleSetupScene) ---
+        // --- Load Default Battle Icon (if needed as fallback, using Robust AssetLoader) ---
+        // Example: If you needed a guaranteed fallback even if manifest lookup fails for specific characters
+        // assetLoader.preloadAsset('default_battle_icon', 'assets/default_character_ilustration_4_3.png');
 
-        console.log("BattleScene: Preload finished queuing assets.");
-        // Load other assets like skill effect spritesheets or audio here if needed, using the manifest lookup
+        console.log("BattleScene: Preload finished queuing assets via Robust AssetLoader.");
+        // Load other assets like skill effect spritesheets or audio here if needed, using assetLoader.preloadAsset(...)
     }
 
     create() { // Removed 'data' parameter
