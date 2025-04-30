@@ -32,7 +32,7 @@ module.exports = {
         }),
         // Add ManifestPlugin here
         new WebpackManifestPlugin({
-            fileName: 'assets/asset-manifest.json', // Fixed manifest filename
+            fileName: 'asset-manifest.json', // Output manifest to the root of dist/
             publicPath: '/', // Use root path as default, dev/prod configs might override output.publicPath
             // No need for basePath or map usually
             filter: (file) => !file.name.endsWith('.map'), // Exclude source maps from manifest
