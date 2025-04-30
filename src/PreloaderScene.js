@@ -83,13 +83,14 @@ class PreloaderScene extends Phaser.Scene {
         let assetsToLoadFound = false; // Flag to check if we would queue anything
 
         // Check if assets exist in manifest (but don't load yet)
+        /* --- SECTION TO UNCOMMENT WHEN ASSETS ARE IMPORTED ---
         audioAssets.forEach(asset => {
             const hashedPath = getAudioPath(asset.source);
             if (hashedPath) {
                 assetsToLoadFound = true;
                 console.log(` - Found background audio in manifest: Key='${asset.key}', Source='${asset.source}', Hashed='${hashedPath}'`);
 
-                /* --- SECTION TO UNCOMMENT WHEN ASSETS ARE IMPORTED ---
+                // --- SECTION TO UNCOMMENT WHEN ASSETS ARE IMPORTED ---
                 // Queue the asset for loading
                 // this.load.audio(asset.key, hashedPath);
 
@@ -97,12 +98,13 @@ class PreloaderScene extends Phaser.Scene {
                 // this.load.once(`filecomplete-audio-${asset.key}`, (key, type, data) => {
                 //     console.log(`   - Background audio loaded: ${key}`);
                 // });
-                --- END SECTION TO UNCOMMENT --- */
+                // --- END SECTION TO UNCOMMENT ---
 
             } else {
                  console.warn(`Background audio asset '${asset.key}' source '${asset.source}' not found in manifest. Cannot queue.`);
             }
         });
+        --- END SECTION TO UNCOMMENT --- */
 
 
         /* --- SECTION TO UNCOMMENT WHEN ASSETS ARE IMPORTED ---
