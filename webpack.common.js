@@ -28,7 +28,8 @@ module.exports = {
   plugins: [
         new HtmlWebpackPlugin({
           title: 'Zaubattler',
-          favicon: 'assets/elzette_illustration_face_favicon.png' // Add this line
+          favicon: 'assets/elzette_illustration_face_favicon.png', // Add this line
+          template: './src/index.html' // Use this template file
         }),
         // Add ManifestPlugin here
         new WebpackManifestPlugin({

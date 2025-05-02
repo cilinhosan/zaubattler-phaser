@@ -36,14 +36,6 @@ function setupLoadingIndicator(scene, loadingTitle = 'Loading...') {
     });
     percentText.setOrigin(0.5, 0.5);
 
-    const assetText = scene.make.text({
-        x: width / 2,
-        y: height / 2 + 50,
-        text: '',
-        style: { font: '18px monospace', fill: '#ffffff' }
-    });
-    assetText.setOrigin(0.5, 0.5);
-
     // --- Setup Event Listeners ---
     // Update progress bar
     scene.load.on('progress', (value) => {
@@ -59,15 +51,6 @@ function setupLoadingIndicator(scene, loadingTitle = 'Loading...') {
         }
     });
 
-    // Update file progress text
-    scene.load.on('fileprogress', (file) => {
-        // Check if assetText still exists
-        if (assetText.active) {
-            // Use file.key which is the key assigned in loadAsset/load.image/etc.
-            assetText.setText('Loading asset: ' + file.key);
-        }
-    });
-
     // Remove progress display when complete
     scene.load.on('complete', () => {
         // Check if graphics/text still exist before destroying
@@ -75,8 +58,6 @@ function setupLoadingIndicator(scene, loadingTitle = 'Loading...') {
         if (progressBox.active) progressBox.destroy();
         if (loadingText.active) loadingText.destroy();
         if (percentText.active) percentText.destroy();
-        if (assetText.active) assetText.destroy();
-
         console.log(`[LoadingIndicator] Load complete for scene: ${scene.scene.key}`);
         // Remove listeners to prevent memory leaks if the scene restarts/reloads
         // Check if scene.load still exists before removing listeners

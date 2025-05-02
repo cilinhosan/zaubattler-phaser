@@ -12,31 +12,41 @@ class MenuScreenScene extends Phaser.Scene {
         // Set background color
         this.cameras.main.setBackgroundColor('#1a1a1a'); // Dark grey color
 
-        // Add game title
-        this.add.text(this.cameras.main.width / 2, this.cameras.main.height / 4, "Game Title", {
-            fontSize: '128px', // Increased font size for 1080p
+        // Add Start Game button
+        const startGameButton = this.add.text(this.cameras.main.width / 2, this.cameras.main.height / 2 - 50, "Start Game", { // Adjusted Y position
+            fontSize: '64px',
             fill: '#fff',
-            align: 'center',
-            resolution: window.devicePixelRatio // Match text resolution to screen DPR
+            align: 'center'
         }).setOrigin(0.5);
 
-        // Add play instruction
-        const playText = this.add.text(this.cameras.main.width / 2, this.cameras.main.height / 1.5, "Click to Play!", {
-            fontSize: '64px', // Increased font size for 1080p
+        // Add outline rectangle for Start Game button
+        const startGameOutline = this.add.graphics();
+        startGameOutline.lineStyle(4, 0xffffff, 1);
+        const startGameBounds = startGameButton.getBounds();
+        startGameOutline.strokeRect(startGameBounds.x - 5, startGameBounds.y - 5, startGameBounds.width + 10, startGameBounds.height + 10);
+
+        // Make Start Game button interactive
+        startGameButton.setInteractive();
+startGameButton.on('pointerover', () => startGameButton.setFill('#00ff00')); // Green on hover
+        startGameButton.on('pointerout', () => startGameButton.setFill('#ffffff')); // White on hover out
+
+// Add Instructions button
+        const instructionsButton = this.add.text(this.cameras.main.width / 2, this.cameras.main.height / 2 + 50, "Instructions", { // Positioned below Start Game
+            fontSize: '64px',
             fill: '#fff',
-            align: 'center',
-            resolution: window.devicePixelRatio // Match text resolution to screen DPR
+            align: 'center'
         }).setOrigin(0.5);
 
-        // Add outline rectangle
-        const outline = this.add.graphics();
-        outline.lineStyle(4, 0xffffff, 1); // White outline, 4px thickness, 1 alpha
-        const textBounds = playText.getBounds();
-        outline.strokeRect(textBounds.x - 5, textBounds.y - 5, textBounds.width + 10, textBounds.height + 10); // Add padding
+        // Add outline rectangle for Instructions button
+        const instructionsOutline = this.add.graphics();
+        instructionsOutline.lineStyle(4, 0xffffff, 1);
+        const instructionsBounds = instructionsButton.getBounds();
+        instructionsOutline.strokeRect(instructionsBounds.x - 5, instructionsBounds.y - 5, instructionsBounds.width + 10, instructionsBounds.height + 10);
 
-        // Make play text interactive
-        playText.setInteractive();
-
+        // Make Instructions button interactive
+        instructionsButton.setInteractive();
+instructionsButton.on('pointerover', () => instructionsButton.setFill('#00ff00')); // Green on hover
+        instructionsButton.on('pointerout', () => instructionsButton.setFill('#ffffff')); // White on hover out
         // --- Create Starting Inventory and Team Immediately ---
         const playerInventory = [];
         // Get 2 random MenuCharacters for the player's starting team
@@ -74,12 +84,44 @@ class MenuScreenScene extends Phaser.Scene {
         console.log("MenuScreenScene: Game state initialized.");
         // --- End Immediate Setup ---
 
-        // Button click now only transitions
-        playText.on('pointerdown', () => {
+        // Start Game Button click transitions
+        startGameButton.on('pointerdown', () => {
             console.log("MenuScreenScene: Starting PreBattleSetupScene...");
             // Start PreBattleSetupScene without passing team/inventory data
             this.scene.start('PreBattleSetupScene', { /* battleIndex will default to 0 */ });
         });
+// Instructions Button click transitions
+        instructionsButton.on('pointerdown', () => {
+            console.log("MenuScreenScene: Starting MenuInstructionScene..."); // Updated log
+            // Start MenuInstructionScene
+            this.scene.start('MenuInstructionScene'); // Updated scene key
+        });
+
+        // --- Add Fullscreen Button ---
+        const padding = 20;
+        const fullscreenButton = this.add.text(
+            this.cameras.main.width - padding,
+            padding,
+            '[ ]', // Simple text representation for fullscreen toggle
+            { fontSize: '32px', fill: '#fff' }
+        )
+        .setOrigin(1, 0) // Origin top-right
+        .setInteractive();
+
+        fullscreenButton.on('pointerdown', () => {
+            if (this.scale.isFullscreen) {
+                this.scale.stopFullscreen();
+                // Optionally change text back, e.g., fullscreenButton.setText('[ ]');
+            } else {
+                this.scale.startFullscreen();
+                // Optionally change text, e.g., fullscreenButton.setText('[X]');
+            }
+        });
+
+        // Optional: Add hover effect
+        fullscreenButton.on('pointerover', () => fullscreenButton.setFill('#00ff00'));
+        fullscreenButton.on('pointerout', () => fullscreenButton.setFill('#ffffff'));
+
     }
 }
 

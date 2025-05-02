@@ -6,6 +6,7 @@ import BattleScene from './BattleScene';
 import PreBattleSetupScene from './PreBattleSetupScene';
 import EndGameScene from './EndGameScene'; // Import the new scene
 import StartGameScene from './StartGameScene'; // Keep StartGameScene for now, might be removed later if unused
+import MenuInstructionScene from './MenuInstructionScene'; // Import the renamed Instructions scene
 
 const config = {
     type: Phaser.AUTO,
@@ -16,8 +17,8 @@ const config = {
         autoCenter: Phaser.Scale.CENTER_BOTH
     },
 
-    input: { // <-- ADD THIS BLOCK
-        debug: true
+    input: {
+        debug: false
     },
     physics: {
         default: 'arcade',
@@ -26,6 +27,6 @@ const config = {
         }
     },
     // PreloaderScene is now the first scene loaded
-    scene: [PreloaderScene, StartGameScene, MenuScreenScene, PreBattleSetupScene, BattleScene, EndGameScene] // Add PreloaderScene first
+    scene: [PreloaderScene, StartGameScene, MenuScreenScene, MenuInstructionScene, PreBattleSetupScene, BattleScene, EndGameScene] // Add MenuInstructionScene
 };
 const game = new Phaser.Game(config);

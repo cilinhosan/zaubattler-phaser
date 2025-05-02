@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import GameDataManager from './game/GameDataManager.js'; // Import the GameDataManager
+import MenuCharacterDisplay from './game/MenuCharacterDisplay.js'; // Import MenuCharacterDisplay
 
 class EndGameScene extends Phaser.Scene {
     constructor() {
@@ -33,11 +34,58 @@ class EndGameScene extends Phaser.Scene {
             align: 'center'
         }).setOrigin(0.5);
 
-        // Add a button to return to the menu
-        // Adjusted vertical position and font size
-        const menuButton = this.add.text(centerX, centerY + 200, 'Return to Menu', { // Moved down
+        // --- Display Survival Stats ---
+        const battlesSurvived = GameDataManager.getCurrentBattleIndex(); // Get battles survived (index starts at 0)
+        const finalTeam = GameDataManager.getActiveTeam(); // Get the active team members
+
+        this.add.text(centerX, centerY - 100, `Battles Survived: ${battlesSurvived}`, {
+            fontSize: '32px',
+            fill: '#fff',
+            align: 'center'
+        }).setOrigin(0.5);
+
+        // --- Display Final Team Slots ---
+        this.add.text(centerX, centerY - 50, 'Final Team', { // Title for the slots
+            fontSize: '32px',
+            fill: '#fff',
+            align: 'center'
+        }).setOrigin(0.5);
+
+        const finalTeamSlots = GameDataManager.getTeamSlots(); // Get slots including nulls
+        const slotWidth = 100;
+        const slotHeight = 100;
+        const slotSpacing = 20;
+        const totalWidth = (slotWidth * finalTeamSlots.length) + (slotSpacing * (finalTeamSlots.length - 1));
+        const startX = centerX - totalWidth / 2 + slotWidth / 2; // Center the group
+        const slotY = centerY + 30; // Position below the title
+
+        this.finalTeamDisplays = []; // Array to hold character display objects
+
+        finalTeamSlots.forEach((charData, index) => {
+            const slotX = startX + index * (slotWidth + slotSpacing);
+            // Create the visual slot rectangle
+            this.add.rectangle(slotX, slotY, slotWidth, slotHeight, 0x444444).setStrokeStyle(2, 0xffffff);
+
+            if (charData) {
+                // Create and position the character display inside the slot
+                // MenuCharacterDisplay positions itself relative to its top-left corner
+                const display = new MenuCharacterDisplay(this, slotX, slotY, charData);
+                // Center the display within the slot rectangle visually
+                display.setPosition(slotX - display.rectWidth / 2, slotY - display.rectHeight / 2);
+                this.add.existing(display); // *** Explicitly add the container to the scene ***
+                this.finalTeamDisplays.push(display);
+            } else {
+                this.finalTeamDisplays.push(null); // Keep track of empty slots if needed
+            }
+        });
+
+
+        // --- Add a button to return to the menu ---
+        // Adjusted vertical position further down
+        const menuButtonY = slotY + slotHeight / 2 + 100; // Position below the slots
+        const menuButton = this.add.text(centerX, menuButtonY, 'Return to Menu', {
             fontSize: '64px', // Increased font size
-            fill: '#0f0' // Green color for the button
+            fill: '#ffffff' // Start with white color
         })
             .setOrigin(0.5)
             .setInteractive();
@@ -48,6 +96,10 @@ class EndGameScene extends Phaser.Scene {
         buttonOutline.lineStyle(2, 0xffffff, 1); // White outline
         buttonOutline.strokeRect(buttonBounds.x - 10, buttonBounds.y - 5, buttonBounds.width + 20, buttonBounds.height + 10); // Add padding
 
+        // Ensure the outline is drawn relative to the potentially moved button
+        this.children.bringToTop(buttonOutline); // Bring outline above button text if needed
+        this.children.bringToTop(menuButton);    // Bring button text above outline
+
         menuButton.on('pointerdown', () => {
             // Reset global game state (inventory, team) before returning to menu
             GameDataManager.reset();
@@ -55,11 +107,11 @@ class EndGameScene extends Phaser.Scene {
         });
 
          menuButton.on('pointerover', () => {
-            menuButton.setFill('#ff0'); // Yellow on hover
+            menuButton.setFill('#00ff00'); // New Green on hover
         });
 
         menuButton.on('pointerout', () => {
-            menuButton.setFill('#0f0'); // Back to green
+            menuButton.setFill('#ffffff'); // Back to white
         });
     }
 

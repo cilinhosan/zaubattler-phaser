@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+    <head>
+    <meta charset="utf-8">
+    <title><%= htmlWebpackPlugin.options.title %></title>
+    <style>
+        html, body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        overflow: hidden; /* Prevent scrollbars */
+        background-color: #000; /* Black background for letter/pillarboxing */
+        }
+        canvas {
+        display: block; /* Remove potential space below canvas */
+        }
+    </style>
+    <% /* HtmlWebpackPlugin will inject assets here */ %>
+  </head>
+  <body>
+    <% /* Or potentially here, depending on plugin config (usually body) */ %>
+    <!-- Phaser will inject the canvas here -->
+  </body>
+</html>

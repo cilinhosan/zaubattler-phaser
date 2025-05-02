@@ -2,9 +2,6 @@ import Phaser from 'phaser';
 import battlesData from './game/battles.json'; // Import battle data
 import BattleCharacter from './game/BattleCharacter.js'; // Use BattleCharacter for enemies in this scene
 import { getCharacterDefinition } from './CharacterDefinitionList.js'; // Corrected import path
-// TODO: Check if MenuCharacter is needed here if playerTeam needs inspection/display beyond base stats
-// import MenuCharacter from './game/MenuCharacter.js';
-// import { fireBlastSkill, atkBoostPassive } from './game/SkillDefinitions.js'; // Removed unused skill imports
 import MenuCharacterDisplay from './game/MenuCharacterDisplay.js'; // Import MenuCharacterDisplay
 import GameDataManager from './game/GameDataManager.js'; // Import the GameDataManager singleton
 import setupLoadingIndicator from './LoadingIndicator.js'; // Import the utility function (Corrected path)
@@ -18,8 +15,6 @@ class PreBattleSetupScene extends Phaser.Scene {
         this.currentEnemyTeam = []; // To hold the loaded enemy BattleCharacter instances
         this.battleTitleText = null; // To hold the centered battle title text
     }
-
-    // init(data) removed - battleIndex is now managed globally
 
     preload() {
         console.log('PreBattleSetupScene: preload()');
@@ -40,7 +35,7 @@ class PreBattleSetupScene extends Phaser.Scene {
 
         // --- Setup Loading Indicator ---
         // Call the utility function, passing the scene context and a title
-        setupLoadingIndicator(this, 'Loading Team Setup...');
+        setupLoadingIndicator(this); // Use default 'Loading...' title
 
         // --- Instantiate AssetLoader ---
         const assetLoader = new AssetLoader(this);
@@ -291,7 +286,7 @@ class PreBattleSetupScene extends Phaser.Scene {
 
 
         // --- Start Battle Button ---
-        const startBattleButton = this.add.text(this.cameras.main.width / 2, this.cameras.main.height - 150, 'Start Battle', { fontSize: '64px', fill: '#0f0' })
+        const startBattleButton = this.add.text(this.cameras.main.width / 2, this.cameras.main.height - 150, 'Start Battle', { fontSize: '64px', fill: '#ffffff' }) // Start white
             .setOrigin(0.5)
             .setInteractive();
 
@@ -299,6 +294,14 @@ class PreBattleSetupScene extends Phaser.Scene {
         const buttonOutline = this.add.graphics();
         buttonOutline.lineStyle(2, 0xffffff, 1);
         buttonOutline.strokeRect(buttonBounds.x - 5, buttonBounds.y - 5, buttonBounds.width + 10, buttonBounds.height + 10);
+
+        // Add hover effects
+        startBattleButton.on('pointerover', () => {
+            startBattleButton.setFill('#00ff00'); // Bright green on hover
+        });
+        startBattleButton.on('pointerout', () => {
+            startBattleButton.setFill('#ffffff'); // Back to white
+        });
 
         startBattleButton.on('pointerdown', () => {
             // --- Get Final Player Team Slot Data ---

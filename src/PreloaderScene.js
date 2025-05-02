@@ -44,7 +44,7 @@ class PreloaderScene extends Phaser.Scene {
 
         // Start the first actual game scene (previously started by StartGameScene)
         console.log('Starting MenuScreenScene...');
-        this.scene.start('MenuScreenScene');
+        this.scene.start('StartGameScene');
     }
 
     /**

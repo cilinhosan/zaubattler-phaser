@@ -13,16 +13,14 @@ class StartGameScene extends Phaser.Scene {
         this.add.text(this.cameras.main.width / 2, this.cameras.main.height / 4, "Zaubattler", {
             fontSize: '128px',
             fill: '#fff',
-            align: 'center',
-            resolution: window.devicePixelRatio
+            align: 'center'
         }).setOrigin(0.5);
 
         // Add play button text (Copied from MenuScreenScene)
         const playText = this.add.text(this.cameras.main.width / 2, this.cameras.main.height / 1.5, "Start Game", { // Changed text slightly
             fontSize: '64px',
             fill: '#fff',
-            align: 'center',
-            resolution: window.devicePixelRatio
+            align: 'center'
         }).setOrigin(0.5);
 
         // Add outline rectangle (Copied from MenuScreenScene)
@@ -40,7 +38,7 @@ class StartGameScene extends Phaser.Scene {
         });
 
         playText.on('pointerover', () => {
-            playText.setFill('#ff0'); // Yellow on hover
+            playText.setFill('#00ff00'); // Green on hover
         });
 
         playText.on('pointerout', () => {
