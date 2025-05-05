@@ -7,6 +7,7 @@ import PreBattleSetupScene from './PreBattleSetupScene';
 import EndGameScene from './EndGameScene'; // Import the new scene
 import StartGameScene from './StartGameScene'; // Keep StartGameScene for now, might be removed later if unused
 import MenuInstructionScene from './MenuInstructionScene'; // Import the renamed Instructions scene
+import BattleRewardScene from './BattleRewardScene'; // Import the Battle Reward Scene
 
 const config = {
     type: Phaser.AUTO,
@@ -27,6 +28,6 @@ const config = {
         }
     },
     // PreloaderScene is now the first scene loaded
-    scene: [PreloaderScene, StartGameScene, MenuScreenScene, MenuInstructionScene, PreBattleSetupScene, BattleScene, EndGameScene] // Add MenuInstructionScene
+    scene: [PreloaderScene, StartGameScene, MenuScreenScene, MenuInstructionScene, PreBattleSetupScene, BattleScene, BattleRewardScene, EndGameScene] // Add BattleRewardScene and MenuInstructionScene
 };
 const game = new Phaser.Game(config);

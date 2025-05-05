@@ -6,7 +6,7 @@ import MenuCharacterDisplay from './game/MenuCharacterDisplay.js'; // Import Men
 import GameDataManager from './game/GameDataManager.js'; // Import the GameDataManager singleton
 import setupLoadingIndicator from './LoadingIndicator.js'; // Import the utility function (Corrected path)
 import AssetLoader from './AssetLoader.js'; // Import the AssetLoader class
-
+import BattleRewardScene from './BattleRewardScene.js'; // Import the reward scene
 
 class PreBattleSetupScene extends Phaser.Scene {
     constructor() {
@@ -54,11 +54,11 @@ class PreBattleSetupScene extends Phaser.Scene {
 
 
         // --- Preload Specific Character Icons (Face and Battle) using AssetLoader ---
-        const currentInventory = GameDataManager.getInventory();
+        const currentCharacterInventory = GameDataManager.getCharacterInventory();
         const currentTeamSlots = GameDataManager.getTeamSlots();
         // Create a Set of unique definition IDs to avoid redundant loading calls
         const uniqueDefinitionIds = new Set();
-        currentInventory.forEach(charData => charData?.definitionId && uniqueDefinitionIds.add(charData.definitionId));
+        currentCharacterInventory.forEach(charData => charData?.definitionId && uniqueDefinitionIds.add(charData.definitionId));
         currentTeamSlots.forEach(charData => charData?.definitionId && uniqueDefinitionIds.add(charData.definitionId));
 
         uniqueDefinitionIds.forEach(definitionId => {
@@ -88,12 +88,38 @@ class PreBattleSetupScene extends Phaser.Scene {
         console.log('PreBattleSetupScene: preload() finished queuing assets via Robust AssetLoader.');
     }
 
-    create() { // Removed 'data' parameter
+    create() {
+        console.log("PreBattleSetupScene: create() started."); // Added log
+
+        // --- Check for Battle Win Result Immediately ---
+        const lastBattleResult = GameDataManager.getLastBattleResult();
+        console.log("[Create Debug] Checked lastBattleResult:", lastBattleResult);
+
+        if (lastBattleResult && lastBattleResult.won === true) {
+            console.log("[Create Debug] Win detected! Redirecting to BattleRewardScene.");
+            const battleIndex = GameDataManager.getCurrentBattleIndex(); // Index of completed battle
+
+            // Award tickets
+            const ticketReward = this._getTicketReward(battleIndex);
+            console.log(`[Create Debug] Awarding ${ticketReward} tickets.`);
+            GameDataManager.addTickets(ticketReward);
+
+            // Clear the result flag so this doesn't trigger again unintentionally
+            GameDataManager.setLastBattleResult(null);
+            console.log("[Create Debug] Cleared lastBattleResult in GameDataManager.");
+
+            // Start the reward scene
+            this.scene.start('BattleRewardScene', { battleIndex: battleIndex });
+            return; // IMPORTANT: Stop executing the rest of create()
+        }
+        console.log("[Create Debug] No win detected or result already processed. Proceeding with normal setup.");
+
+        // --- Original Create Logic Starts Here ---
         // this.add.image(400, 300, 'background'); // Add background if you have one
 
         // Get current team slots and inventory from the GameDataManager
         const playerTeamSlotsData = GameDataManager.getTeamSlots(); // Array with character data or nulls
-        const playerInventory = GameDataManager.getInventory();
+        const playerCharacterInventory = GameDataManager.getCharacterInventory();
         const battleIndex = GameDataManager.getCurrentBattleIndex(); // Get index from manager
 
         // Initialize the group to hold enemy display objects
@@ -140,8 +166,8 @@ class PreBattleSetupScene extends Phaser.Scene {
         const inventoryAreaY = textBottomY + inventoryPaddingY;
         console.log(`[Debug Layout] Calculated inventoryAreaY: ${inventoryAreaY}`); // <-- ADD LOG
 
-        this.inventoryDisplays = []; // Array to hold MenuCharacterDisplay objects for inventory
-        this.inventoryCharacterData = playerInventory; // Store the raw inventory data
+        this.characterInventoryDisplays = []; // Array to hold MenuCharacterDisplay objects for inventory
+        this.characterInventoryData = playerCharacterInventory; // Store the raw inventory data
 
         const inventoryAreaX = 50;
         // inventoryAreaY is now calculated above
@@ -149,7 +175,7 @@ class PreBattleSetupScene extends Phaser.Scene {
         const inventoryAreaHeight = 300; // Visible height
 
         // Create a container for all inventory items
-        this.inventoryContainer = this.add.container(inventoryAreaX, inventoryAreaY);
+        this.characterInventoryContainer = this.add.container(inventoryAreaX, inventoryAreaY);
 
         // Simple grid layout within the container
         const inventoryStartX = 50; // Relative to container
@@ -159,7 +185,7 @@ class PreBattleSetupScene extends Phaser.Scene {
         const itemsPerRow = Math.floor((inventoryAreaWidth - inventoryStartX * 2) / inventorySpacingX); // Use local const
         let maxContentHeight = 0; // Back to local variable (use let as it's reassigned)
 
-        this.inventoryCharacterData.forEach((charData, index) => {
+        this.characterInventoryData.forEach((charData, index) => {
             const gridX = index % itemsPerRow;
             const gridY = Math.floor(index / itemsPerRow);
             const displayX = inventoryStartX + gridX * inventorySpacingX;
@@ -169,14 +195,14 @@ class PreBattleSetupScene extends Phaser.Scene {
             // charDisplay.setInteractive(); // REMOVED - Let MenuCharacterDisplay handle its own interaction setup
 
             // Store the display object and link it to the data
-            this.inventoryDisplays.push(charDisplay);
+            this.characterInventoryDisplays.push(charDisplay);
             charDisplay.setData('characterData', charData);
             charDisplay.setData('inventoryIndex', index);
 
             // REMOVED individual item listener
 
             // Add the display to the container
-            this.inventoryContainer.add(charDisplay);
+            this.characterInventoryContainer.add(charDisplay);
 
             maxContentHeight = Math.max(maxContentHeight, displayY + charDisplay.height); // Use local variable
         });
@@ -184,14 +210,14 @@ class PreBattleSetupScene extends Phaser.Scene {
         // Set the container interactive over its full potential height
         // Use stored properties
         // Use local variables
-        this.inventoryContainer.setInteractive(
+        this.characterInventoryContainer.setInteractive(
             new Phaser.Geom.Rectangle(0, 0, inventoryAreaWidth, maxContentHeight),
             Phaser.Geom.Rectangle.Contains
         );
 
         // Add pointerdown listener to the container
-        this.inventoryContainer.on('pointerdown', (pointer, localX, localY, event) => {
-            console.log(`[Debug] inventoryContainer pointerdown: localX=${localX.toFixed(1)}, localY=${localY.toFixed(1)}`);
+        this.characterInventoryContainer.on('pointerdown', (pointer, localX, localY, event) => {
+            console.log(`[Debug] characterInventoryContainer pointerdown: localX=${localX.toFixed(1)}, localY=${localY.toFixed(1)}`);
 
             // REMOVED: Check for popupJustClosedByButton flag (This comment confirms removal from previous attempt)
 
@@ -199,7 +225,7 @@ class PreBattleSetupScene extends Phaser.Scene {
             let clickedChild = null;
             let clickedCharData = null;
 
-            for (const child of this.inventoryContainer.list) {
+            for (const child of this.characterInventoryContainer.list) {
                 // Check if the click is within the child's 100x100 box area
                 // child.x/y are relative to the container
                 if (child instanceof MenuCharacterDisplay && // Ensure it's the correct type
@@ -246,7 +272,7 @@ class PreBattleSetupScene extends Phaser.Scene {
         maskGraphics.fillStyle(0xffffff);
         maskGraphics.fillRect(inventoryAreaX, inventoryAreaY, inventoryAreaWidth, inventoryAreaHeight); // Use local const
         const mask = maskGraphics.createGeometryMask();
-        this.inventoryContainer.setMask(mask);
+        this.characterInventoryContainer.setMask(mask);
 
         // Add drag scrolling
         const scrollBounds = {
@@ -257,17 +283,17 @@ class PreBattleSetupScene extends Phaser.Scene {
         this.input.on('wheel', (pointer, gameObjects, deltaX, deltaY, deltaZ) => {
             // Check if pointer is over the inventory area roughly
              if (pointer.y >= inventoryAreaY && pointer.y <= inventoryAreaY + inventoryAreaHeight) {
-                let newY = this.inventoryContainer.y - deltaY * 0.5; // Adjust scroll speed as needed
+                let newY = this.characterInventoryContainer.y - deltaY * 0.5; // Adjust scroll speed as needed
                 newY = Phaser.Math.Clamp(newY, scrollBounds.minY, scrollBounds.maxY);
-                this.inventoryContainer.y = newY;
+                this.characterInventoryContainer.y = newY;
             }
         });
 
         // Optional: Add drag input for touch/mouse dragging (more complex)
-        // this.inventoryContainer.setInteractive(new Phaser.Geom.Rectangle(0, 0, inventoryAreaWidth, maxContentHeight), Phaser.Geom.Rectangle.Contains);
-        // this.input.setDraggable(this.inventoryContainer);
+        // this.characterInventoryContainer.setInteractive(new Phaser.Geom.Rectangle(0, 0, inventoryAreaWidth, maxContentHeight), Phaser.Geom.Rectangle.Contains);
+        // this.input.setDraggable(this.characterInventoryContainer);
         // this.input.on('drag', (pointer, gameObject, dragX, dragY) => {
-        //     if (gameObject === this.inventoryContainer) {
+        //     if (gameObject === this.characterInventoryContainer) {
         //         let newY = gameObject.y + (pointer.y - pointer.prevPosition.y);
         //         newY = Phaser.Math.Clamp(newY, scrollBounds.minY, scrollBounds.maxY);
         //         gameObject.y = newY;
@@ -412,6 +438,29 @@ class PreBattleSetupScene extends Phaser.Scene {
      */
     wake() {
         console.log("PreBattleSetupScene: Waking up...");
+
+        // --- Check Battle Outcome ---
+        const lastBattleResult = GameDataManager.getLastBattleResult();
+        console.log("[Wake Debug] lastBattleResult:", lastBattleResult); // <-- ADD LOG
+
+        if (lastBattleResult && lastBattleResult.won === true) { // <-- Explicit check for true
+            console.log("[Wake Debug] Win condition met (lastBattleResult.won is true)."); // <-- ADD LOG
+            const battleIndex = GameDataManager.getCurrentBattleIndex(); // Get index of the completed battle
+
+            // Award tickets
+            const ticketReward = this._getTicketReward(battleIndex);
+            console.log(`PreBattleSetupScene: Awarding ${ticketReward} tickets.`);
+            GameDataManager.addTickets(ticketReward); // Assume this method exists
+
+            // Transition to Reward Scene
+            console.log("[Wake Debug] Attempting to start BattleRewardScene..."); // <-- ADD LOG
+            this.scene.start('BattleRewardScene', { battleIndex: battleIndex });
+            console.log("[Wake Debug] this.scene.start('BattleRewardScene') called."); // <-- ADD LOG
+            return; // Stop further execution in wake()
+        } else { // <-- ADD ELSE
+            console.log("[Wake Debug] Win condition NOT met. Proceeding with next battle setup."); // <-- ADD LOG
+            // --- If Lost or No Battle Result, Proceed with Setup for Next Battle ---
+            console.log("PreBattleSetupScene: Player lost or no battle result, setting up next battle.");
         const battleIndex = GameDataManager.getCurrentBattleIndex();
         this._loadAndDisplayBattleData(battleIndex);
         // Refresh inventory visuals
@@ -421,13 +470,25 @@ class PreBattleSetupScene extends Phaser.Scene {
         this.isMovingState = false;
         this.selectedInventoryCharacterData = null;
         this.selectedInventoryDisplay = null;
-        console.log("PreBattleSetupScene: Wake update complete.");
+        console.log("PreBattleSetupScene: Wake update complete (for next battle setup).");
+        } // <-- ADDED Missing closing brace for the 'else' block
     }
 
 
     // Removed displayCharacterInfo as it's replaced by the new interaction model
 
     // --- Helper Functions ---
+
+    /**
+     * Calculates the number of tickets to award for winning a specific battle.
+     * @param {number} battleIndex - The index of the battle that was won.
+     * @returns {number} The number of tickets awarded.
+     */
+    _getTicketReward(battleIndex) {
+        // TODO: Implement logic based on battleIndex later
+        console.log(`_getTicketReward called for battleIndex: ${battleIndex}`);
+        return 2; // Fixed reward for now
+    }
 
     _populateInitialTeam(playerTeamSlotsData) {
         // Place characters from the globally stored team slots into the visual slots
@@ -749,7 +810,7 @@ class PreBattleSetupScene extends Phaser.Scene {
                 .map(displayObj => displayObj.data) // Get data from {icon, text, data} object
         );
 
-        this.inventoryDisplays.forEach(invDisplay => {
+        this.characterInventoryDisplays.forEach(invDisplay => {
             const charData = invDisplay.getData('characterData');
             const isInTeam = teamCharacterSet.has(charData);
             // TODO: Add actual checkmark visual to MenuCharacterDisplay class

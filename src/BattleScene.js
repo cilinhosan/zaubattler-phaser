@@ -426,6 +426,10 @@ class BattleScene extends Phaser.Scene {
         const allPlayerDefeated = this.playerTeam.every(char => char.isDefeated);
         let outcome = allPlayerDefeated ? 'lose' : 'win'; // Determine outcome based on who is defeated
 
+        // --- Set Battle Result in GameDataManager ---
+        console.log(`BattleScene: Setting last battle result: { won: ${outcome === 'win'} }`);
+        GameDataManager.setLastBattleResult({ won: outcome === 'win' }); // Store the result
+
         // --- Battle Progression Logic ---
         if (outcome === 'win') {
             const nextBattleIndex = this.battleIndex + 1;

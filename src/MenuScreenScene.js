@@ -77,9 +77,9 @@ instructionsButton.on('pointerover', () => instructionsButton.setFill('#00ff00')
         console.log("Created starting inventory:", playerInventory);
         console.log("Created starting team:", initialTeam.filter(c => c !== null)); // Log only non-null team members
 
-        // Initialize the Game Data Manager with inventory and initial team
-        // Note: initializeInventory also clears team slots, so call it first.
-        GameDataManager.initializeInventory(playerInventory);
+        // Initialize the Game Data Manager with character inventory and initial team
+        // Note: initializeCharacterInventory also clears team slots, so call it first.
+        GameDataManager.initializeCharacterInventory(playerInventory);
         GameDataManager.initializeTeam(initialTeam); // Pass the array that might contain nulls
         console.log("MenuScreenScene: Game state initialized.");
         // --- End Immediate Setup ---

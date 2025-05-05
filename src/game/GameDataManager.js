@@ -7,39 +7,99 @@ class GameDataManager {
         if (GameDataManager.instance) {
             return GameDataManager.instance;
         }
-        this.inventory = []; // Array holding MenuCharacter data objects
-        // Array representing 5 team slots, holding references to inventory character objects or null
+        this.tickets = 0; // Player currency
+        this.characterInventory = []; // Array holding MenuCharacter data objects (player's recruited characters)
+        // Array representing 5 team slots, holding references to characterInventory objects or null
         this.teamSlots = [null, null, null, null, null];
         this.currentBattleIndex = 0; // Track the current battle
 
         // --- Properties to hold prepared teams for the upcoming battle ---
         this.currentBattlePlayerTeam = null; // Array of BattleCharacter instances
         this.currentBattleEnemyTeam = null; // Array of BattleCharacter instances
+        this.lastBattleResult = null; // Stores the outcome of the last battle { won: boolean }
 
         GameDataManager.instance = this;
         console.log("GameDataManager initialized.");
     }
 
-    // --- Inventory Methods ---
+    // --- Ticket Methods ---
 
-    initializeInventory(initialInventory) {
-        if (this.inventory.length > 0) {
-            console.warn("GameDataManager: Attempting to re-initialize inventory. Ignoring.");
+    addTickets(amount) {
+        if (amount > 0) {
+            this.tickets += amount;
+            console.log(`GameDataManager: Added ${amount} tickets. Total: ${this.tickets}`);
+        } else {
+            console.warn(`GameDataManager: Attempted to add invalid ticket amount: ${amount}`);
+        }
+    }
+
+    spendTickets(amount) {
+        if (amount <= 0) {
+            console.warn(`GameDataManager: Attempted to spend invalid ticket amount: ${amount}`);
+            return false;
+        }
+        if (this.tickets >= amount) {
+            this.tickets -= amount;
+            console.log(`GameDataManager: Spent ${amount} tickets. Remaining: ${this.tickets}`);
+            return true;
+        } else {
+            console.log(`GameDataManager: Not enough tickets to spend ${amount}. Current: ${this.tickets}`);
+            return false;
+        }
+    }
+
+    getTickets() {
+        return this.tickets;
+    }
+
+    // --- Character Inventory Methods ---
+
+    initializeCharacterInventory(initialCharacters) {
+        if (this.characterInventory.length > 0) {
+            console.warn("GameDataManager: Attempting to re-initialize character inventory. Ignoring.");
             return;
         }
-        this.inventory = initialInventory || [];
-        console.log(`GameDataManager: Inventory initialized with ${this.inventory.length} characters.`);
+        this.characterInventory = initialCharacters || [];
+        console.log(`GameDataManager: Character inventory initialized with ${this.characterInventory.length} characters.`);
         // Clear team slots when inventory is reset to ensure consistency
         this.teamSlots = [null, null, null, null, null];
     }
 
-    getInventory() {
-        return [...this.inventory]; // Return shallow copy
+    /**
+     * Adds a character to the player's inventory.
+     * @param {object} characterData - The MenuCharacter data object.
+     */
+    addCharacterToInventory(characterData) {
+        if (!characterData || !characterData.id) {
+            console.error("GameDataManager: Attempted to add invalid character data to inventory.", characterData);
+            return;
+        }
+        // Optional: Check if character already exists by ID to prevent duplicates
+        if (this.findCharacterInInventoryById(characterData.id)) {
+             console.warn(`GameDataManager: Character with ID ${characterData.id} already exists in inventory. Skipping add.`);
+             return;
+        }
+        this.characterInventory.push(characterData);
+        console.log(`GameDataManager: Added character ${characterData.name} (ID: ${characterData.id}) to inventory.`);
     }
 
-    findInventoryCharacterById(characterId) {
-        return this.inventory.find(char => char && char.id === characterId);
+    /**
+     * Gets the list of characters the player has recruited (the inventory).
+     * @returns {Array} A shallow copy of the character inventory.
+     */
+    getCharacterInventory() {
+        return [...this.characterInventory]; // Return shallow copy
     }
+
+    /**
+     * Finds a character in the character inventory by its unique ID.
+     * @param {string} characterId - The unique ID of the character.
+     * @returns {object | undefined} The character data object if found, otherwise undefined.
+     */
+    findCharacterInInventoryById(characterId) {
+        return this.characterInventory.find(char => char && char.id === characterId);
+    }
+
 
     // --- Team Methods ---
 
@@ -53,11 +113,11 @@ class GameDataManager {
         if (initialTeamData && Array.isArray(initialTeamData)) {
             initialTeamData.forEach((charData, index) => {
                 if (index < this.teamSlots.length && charData) {
-                    const inventoryChar = this.findInventoryCharacterById(charData.id);
+                    const inventoryChar = this.findCharacterInInventoryById(charData.id);
                     if (inventoryChar) {
-                        this.teamSlots[index] = inventoryChar; // Store reference from inventory
+                        this.teamSlots[index] = inventoryChar; // Store reference from characterInventory
                     } else {
-                        console.warn(`GameDataManager: Character ${charData.name} (ID: ${charData.id}) from initial team not found in inventory. Skipping.`);
+                        console.warn(`GameDataManager: Character ${charData.name} (ID: ${charData.id}) from initial team not found in character inventory. Skipping.`);
                     }
                 }
             });
@@ -79,12 +139,12 @@ class GameDataManager {
         // Validate and store references from the main inventory
         this.teamSlots = finalTeamSlotData.map((charData, index) => {
             if (charData) {
-                const inventoryChar = this.findInventoryCharacterById(charData.id);
+                const inventoryChar = this.findCharacterInInventoryById(charData.id);
                 if (inventoryChar) {
-                    return inventoryChar; // Store the inventory reference
+                    return inventoryChar; // Store the characterInventory reference
                 } else {
-                    console.warn(`GameDataManager: Character ${charData.name} (ID: ${charData.id}) in final team slot ${index} not found in inventory. Slot cleared.`);
-                    return null; // Character doesn't exist in inventory, clear slot
+                    console.warn(`GameDataManager: Character ${charData.name} (ID: ${charData.id}) in final team slot ${index} not found in character inventory. Slot cleared.`);
+                    return null; // Character doesn't exist in characterInventory, clear slot
                 }
             }
             return null; // Slot was empty
@@ -151,18 +211,37 @@ class GameDataManager {
         return this.currentBattleEnemyTeam;
     }
 
+    // --- Battle Result Methods ---
+    setLastBattleResult(result) {
+        // Expects result to be an object like { won: true } or { won: false }
+        if (result && typeof result.won === 'boolean') {
+            this.lastBattleResult = result;
+            console.log(`[GameDataManager] Last battle result set:`, this.lastBattleResult);
+        } else {
+            console.warn("[GameDataManager] Attempted to set invalid battle result:", result);
+            this.lastBattleResult = null; // Clear if invalid
+        }
+    }
+
+    getLastBattleResult() {
+        // console.log("[GameDataManager] Getting last battle result:", this.lastBattleResult);
+        return this.lastBattleResult;
+    }
+
     /**
      * Resets the inventory, team slots, and battle index to their initial state.
      * Should be called when starting a new game or returning to the main menu.
      */
     reset() {
-        this.inventory = [];
+        this.tickets = 0;
+        this.characterInventory = [];
         this.teamSlots = [null, null, null, null, null];
         this.currentBattleIndex = 0; // Reset battle index as well
         // Also clear prepared battle teams
         this.currentBattlePlayerTeam = null;
         this.currentBattleEnemyTeam = null;
-        console.log("GameDataManager: State reset (inventory, team, battle index, and prepared teams cleared).");
+        this.lastBattleResult = null; // Also clear the last battle result
+        console.log("GameDataManager: State reset (tickets, character inventory, team, battle index, prepared teams, and last battle result cleared).");
     }
 }
 
