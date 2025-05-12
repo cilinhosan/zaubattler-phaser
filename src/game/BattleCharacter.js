@@ -1,352 +1,365 @@
 // src/game/BattleCharacter.js
 import BaseCharacter from './BaseCharacter.js';
-import { getCharacterDefinition } from '../CharacterDefinitionList.js'; // Use new definition getter
-import * as SkillHelper from './SkillHelper.js'; // Import skill helpers
+import { getCharacterDefinition } from '../CharacterDefinitionList.js';
+import * as SkillHelper from './SkillHelper.js';
+// Import AttachedEffect if specific effect classes are instantiated here,
+// otherwise, skills will create and pass them.
 
 /**
  * Represents a character specifically within the context of a battle.
- * Handles combat stats, status effects, skill execution, and taking actions.
- * Skills are now methods on the character's definition instance.
+ * Handles combat stats, attached effects, skill execution, and taking actions.
  */
 export class BattleCharacter extends BaseCharacter {
     constructor(definitionId, level = 1, team = 'player') {
-        super(definitionId, level); // Call BaseCharacter constructor
+        super(definitionId, level);
 
-        // Get and store the definition instance
         this.definition = getCharacterDefinition(definitionId);
         if (!this.definition) {
-            // BaseCharacter constructor already throws if definitionId is invalid,
-            // but double-check in case getCharacterDefinition returns null for other reasons.
             throw new Error(`Failed to get definition instance for ID "${definitionId}" in BattleCharacter`);
         }
 
-        this.team = team; // 'player' or 'enemy'
+        this.team = team;
+        this.battleSceneContext = null; // Will be set by BattleScene
 
-        // --- Initialize Battle-Specific Stats ---
-        // Use methods for calculation and applying passives later
         this.maxHp = 0;
         this.currentHp = 0;
         this.currentAtk = 0;
         this.currentDef = 0;
         this.critChance = 0;
         this.critDamage = 0;
-        this.calculateStatsFromLevel(); // Initial calculation
+        this.calculateStatsFromLevel();
 
         this.isDefeated = false;
-        this.statusEffects = []; // { type: 'burn', duration: 3, magnitude: 10 }
+        this.attachedEffects = []; // Stores instances of AttachedEffect
 
-        // --- Initialize Skill Cooldowns ---
-        this.skillCooldowns = {}; // Map: { skillMethodName: currentCooldown }
+        this.skillCooldowns = {};
         this.initializeSkillCooldowns();
 
-        // Apply initial passive effects right after stats and skills are set up
-        this.applyInitialPassiveEffects();
-        // Ensure HP is correct after potential maxHP changes from passives
-        this.currentHp = Math.min(this.currentHp, this.maxHp);
-
-
-        // Reference to the display object (will be set externally by BattleScene/CharacterDisplay)
         this.display = null;
     }
 
-    // --- Stat Calculation ---
+    setBattleSceneContext(scene) {
+        this.battleSceneContext = scene;
+        this.applyInitialPassiveEffects();
+        this.currentHp = Math.min(this.currentHp, this.maxHp); 
+    }
+
+    getEffectContext() {
+        return { scene: this.battleSceneContext, owner: this };
+    }
+
     calculateStatsFromLevel() {
-        console.log(`Calculating stats for ${this.name} Lvl ${this.level}. Base HP: ${this.baseStats.hp}, Base ATK: ${this.baseStats.atk}, Base DEF: ${this.baseStats.def}`);
-        // Basic linear scaling example - TODO: Implement more sophisticated scaling
-        const levelMultiplier = 1 + (this.level - 1) * 0.1; // +10% stats per level past 1
-        console.log(`Level multiplier: ${levelMultiplier}`);
+        const levelMultiplier = 1 + (this.level - 1) * 0.1;
         this.maxHp = Math.floor(this.baseStats.hp * levelMultiplier);
         this.currentAtk = Math.floor(this.baseStats.atk * levelMultiplier);
         this.currentDef = Math.floor(this.baseStats.def * levelMultiplier);
-        this.critChance = this.baseStats.critChance; // Crit chance might scale differently
-        this.critDamage = this.baseStats.critDamage; // Crit damage might scale differently
-
-        // Set current HP to max HP after calculation
+        this.critChance = this.baseStats.critChance;
+        this.critDamage = this.baseStats.critDamage;
         this.currentHp = this.maxHp;
-        console.log(`${this.name} Lvl ${this.level} stats: HP=${this.maxHp}, ATK=${this.currentAtk}, DEF=${this.currentDef}`);
     }
 
-    // --- Skill Initialization and Management ---
     initializeSkillCooldowns() {
         this.skillCooldowns = {};
         const skillMethods = this.definition.getAllSkillMethods();
         skillMethods.forEach(methodName => {
             const metadata = this.definition.getSkillMetadata(methodName);
             if (metadata && metadata.type === 'active') {
-                this.skillCooldowns[methodName] = 0; // Start with 0 cooldown
+                this.skillCooldowns[methodName] = 0;
             }
         });
     }
 
-    // Apply passives that should take effect immediately upon character creation/battle start
+    addAttachedEffect(effectInstance) {
+        if (!effectInstance || typeof effectInstance.onApply !== 'function') {
+            console.error("Invalid effectInstance passed to addAttachedEffect", effectInstance);
+            return;
+        }
+        const existingEffect = this.attachedEffects.find(e => e.type === effectInstance.type && e.sourceSkillId === effectInstance.sourceSkillId);
+        if (existingEffect && typeof existingEffect.refreshDuration === 'function') { 
+            existingEffect.refreshDuration(effectInstance.duration);
+            if (typeof existingEffect.onApply === 'function') { 
+                 existingEffect.onApply(this.getEffectContext());
+            }
+            console.log(`Effect ${effectInstance.type} on ${this.name} refreshed.`);
+            return existingEffect;
+        }
+
+        this.attachedEffects.push(effectInstance);
+        effectInstance.onApply(this.getEffectContext());
+        console.log(`Effect ${effectInstance.type} applied to ${this.name}.`);
+        return effectInstance;
+    }
+
+    removeAttachedEffectById(effectId) {
+        const index = this.attachedEffects.findIndex(effect => effect.id === effectId);
+        if (index > -1) {
+            const effect = this.attachedEffects[index];
+            effect.onExpire(this.getEffectContext()); 
+            this.attachedEffects.splice(index, 1);
+            console.log(`Effect ${effect.type} (ID: ${effect.id}) removed from ${this.name}.`);
+        }
+    }
+
     applyInitialPassiveEffects() {
+        if (!this.battleSceneContext) {
+            console.warn(`Cannot apply initial passive effects for ${this.name}: battleSceneContext not set.`);
+            return;
+        }
         const skillMethods = this.definition.getAllSkillMethods();
         skillMethods.forEach(methodName => {
             const metadata = this.definition.getSkillMetadata(methodName);
             if (metadata && metadata.type === 'passive' && (metadata.applyImmediately || metadata.modifiesStats)) {
-                console.log(`Applying passive effect: ${metadata.name}`);
-                // Execute the passive skill method defined in the CharacterDefinition class
-                // Pass 'this' (the BattleCharacter instance) as the caster context
                 if (typeof this.definition[methodName] === 'function') {
-                    this.definition[methodName](this, null, null); // Passives often only need the caster
-                    // Note: Actual stat modification should happen within the skill method
-                    // or by calling helper methods on this BattleCharacter instance.
+                    console.log(`Executing passive skill method: ${metadata.name} for ${this.name}`);
+                    this.definition[methodName](this, null, null, this.getEffectContext()); 
                 } else {
-                     console.warn(`Passive skill method ${methodName} not found on definition for ${this.name}`);
+                    console.warn(`Passive skill method ${methodName} not found on definition for ${this.name}`);
                 }
             }
         });
-         // Recalculate stats potentially modified by passives (e.g., maxHp)
-         // TODO: This needs a more robust system. Passives might modify current stats, not just max.
-         // For now, just ensure currentHp doesn't exceed maxHp.
-         this.currentHp = Math.min(this.currentHp, this.maxHp);
     }
 
-    // --- Core Combat Methods ---
-
-    takeDamage(amount) {
+    takeDamage(initialAmount, source = null, damageType = 'physical', isCrit = false, options = {}) {
         if (this.isDefeated) return 0;
 
-        // Basic defense calculation
-        const defenseReduction = this.currentDef;
-        let actualDamage = Math.max(1, amount - defenseReduction); // Ensure at least 1 damage
+        let damageInfo = {
+            baseAmount: initialAmount, 
+            amount: initialAmount,     
+            finalAmount: 0,            
+            source: source,
+            damageType: damageType,
+            isCrit: isCrit,
+            isThornsDamage: options.isThornsDamage || false, 
+        };
 
-        // Basic Critical Hit Check (can be passed in if source matters)
-        // This is a simplified check; the source action (basic attack/skill) might determine crit
-        const isCrit = Math.random() < this.critChance; // Check against own crit chance (less common)
-        if (isCrit) {
-             console.log("Critical Hit!");
-             actualDamage = Math.floor(actualDamage * this.critDamage);
+        if (!damageInfo.isThornsDamage) { 
+            for (const effect of this.attachedEffects) {
+                if (effect.isActive && typeof effect.onDamageTaken === 'function') {
+                    damageInfo = effect.onDamageTaken(this.getEffectContext(), damageInfo) || damageInfo;
+                }
+            }
         }
-        // TODO: Add elemental resistances/weaknesses calculation
 
-        this.currentHp -= actualDamage;
-        this.currentHp = Math.max(0, this.currentHp); // Clamp HP to 0 minimum
-        console.log(`${this.name} takes ${actualDamage} damage. HP: ${this.currentHp}/${this.maxHp}`);
+        const defenseReduction = this.currentDef; 
+        let calculatedDamage = Math.max(1, damageInfo.amount - defenseReduction);
+
+        damageInfo.finalAmount = Math.floor(calculatedDamage);
+        this.currentHp -= damageInfo.finalAmount;
+        this.currentHp = Math.max(0, this.currentHp);
+        console.log(`${this.name} takes ${damageInfo.finalAmount} ${damageInfo.damageType} damage from ${source ? source.name : 'Unknown'}. HP: ${this.currentHp}/${this.maxHp}`);
 
         if (this.currentHp <= 0) {
             this.isDefeated = true;
             console.log(`${this.name} has been defeated!`);
-            // TODO: Add event dispatch or callback for defeat (e.g., for BattleScene)
-            // this.scene.events.emit('characterDefeated', this.id, this.team);
+            if (this.battleSceneContext && typeof this.battleSceneContext.onCharacterActuallyDefeated === 'function') {
+                this.battleSceneContext.onCharacterActuallyDefeated(this.getEffectContext(), this);
+            }
         }
 
-        // Update display if it exists
         if (this.display) {
             this.display.updateHpDisplay(this.currentHp, this.maxHp);
-             if (actualDamage > 0 && !this.isDefeated) {
-                 this.display.shake();
-                 // TODO: Add damage number popup visual feedback
-             }
-             if (this.isDefeated) {
-                 this.display.showDefeated();
-             }
+            if (damageInfo.finalAmount > 0 && !this.isDefeated) this.display.shake();
+            if (this.isDefeated) this.display.showDefeated();
         }
 
-        return actualDamage;
+        return damageInfo.finalAmount;
     }
 
-    heal(amount) {
-        if (this.isDefeated) return;
-
-        const healAmount = Math.max(0, amount); // Ensure healing is not negative
+    heal(amount, source = null) { 
+        if (this.isDefeated) return 0;
+        const healAmount = Math.max(0, amount);
         this.currentHp += healAmount;
-        this.currentHp = Math.min(this.currentHp, this.maxHp); // Clamp HP to maxHp maximum
+        this.currentHp = Math.min(this.currentHp, this.maxHp);
         console.log(`${this.name} heals for ${healAmount}. HP: ${this.currentHp}/${this.maxHp}`);
         if (this.display) {
             this.display.updateHpDisplay(this.currentHp, this.maxHp);
-            // TODO: Add visual feedback for healing (e.g., green number popup)
         }
+        return healAmount;
     }
-
-    // --- Action Determination ---
 
     getBasicAttackAction(targetTeam) {
         return {
             name: "Basic Attack",
             caster: this,
-            targetType: 'enemy', // Used by BattleScene for potential highlighting
-            execute: () => {
+            targetType: 'enemy',
+            execute: (battleScene, chosenTargets) => { 
                 const livingTargets = targetTeam.filter(t => t && !t.isDefeatedStatus());
                 if (livingTargets.length === 0) {
-                     console.log(`${this.name} tries Basic Attack, but there are no living targets.`);
-                     return;
+                    console.log(`${this.name} tries Basic Attack, but no living targets.`);
+                    return;
                 }
-                const target = livingTargets[Math.floor(Math.random() * livingTargets.length)];
+                const target = chosenTargets && chosenTargets.length > 0 ? chosenTargets[0] : livingTargets[Math.floor(Math.random() * livingTargets.length)];
                 console.log(`${this.name} uses Basic Attack on ${target.name}`);
 
-                // Basic Attack Damage Calculation (including crit)
-                let baseDamage = this.currentAtk; // Use current ATK as base
-                const isCrit = Math.random() < this.critChance;
+                let baseDamage = this.currentAtk;
+                const isCrit = Math.random() < this.critChance; 
                 if (isCrit) {
-                    console.log("Basic Attack Critical Hit!");
                     baseDamage = Math.floor(baseDamage * this.critDamage);
                 }
-                // Use SkillHelper, passing calculated base damage
-                SkillHelper.dealDamage(this, target, baseDamage, 'physical');
+                SkillHelper.dealDamage(this, target, baseDamage, 'physical', { isCrit }, battleScene);
             }
         };
     }
 
     determineAction(targetTeam, ownTeam) {
-        if (this.isDefeated) {
-            return null;
-        }
+        if (this.isDefeated) return null;
 
-        // 1. Check active skills based on definition methods and cooldowns
+        const context = this.getEffectContext();
+
         const skillMethods = this.definition.getAllSkillMethods();
         for (const methodName of skillMethods) {
             const metadata = this.definition.getSkillMetadata(methodName);
-
-            // Check if it's a usable active skill
             if (metadata && metadata.type === 'active' && this.skillCooldowns[methodName] <= 0) {
-                 // Check if the skill method exists on the definition
-                 if (typeof this.definition[methodName] === 'function') {
-                     console.log(`${this.name} considers using skill: ${metadata.name}`);
-                     const currentTargetType = metadata.targetType || 'enemy'; // Get target type
+                if (typeof this.definition[methodName] === 'function') {
+                    const livingTargetTeam = targetTeam.filter(t => t && !t.isDefeatedStatus());
+                    const livingOwnTeam = ownTeam.filter(t => t && !t.isDefeatedStatus());
+                    let hasValidTargets = true; 
+                     if ((metadata.targetType === 'enemy' || metadata.targetType === 'allEnemies') && livingTargetTeam.length === 0) hasValidTargets = false;
+                     if ((metadata.targetType === 'ally' || metadata.targetType === 'allAllies') && livingOwnTeam.length === 0) hasValidTargets = false;
 
-                     // --- Target Validation ---
-                     let hasValidTargets = false;
-                     const livingTargetTeam = targetTeam.filter(t => t && !t.isDefeatedStatus());
-                     const livingOwnTeam = ownTeam.filter(t => t && !t.isDefeatedStatus());
+                    if (hasValidTargets) {
+                        // console.log(`${this.name} considers using skill: ${metadata.name}`); // Less verbose
+                        return {
+                            name: metadata.name,
+                            skillId: metadata.id || methodName, 
+                            caster: this,
+                            targetType: metadata.targetType || 'enemy',
+                            execute: (battleScene, chosenTargets) => { 
+                                for (const effect of this.attachedEffects) {
+                                    if (effect.isActive && typeof effect.beforeAction === 'function') {
+                                        effect.beforeAction(context, this); 
+                                    }
+                                }
+                                console.log(`${this.name} executes skill: ${metadata.name}`);
+                                this.definition[methodName](this, chosenTargets || livingTargetTeam, livingOwnTeam, context);
+                                this.skillCooldowns[methodName] = metadata.cooldown || 0;
 
-                     switch (currentTargetType) {
-                         case 'enemy':
-                         case 'allEnemies':
-                             hasValidTargets = livingTargetTeam.length > 0;
-                             break;
-                         case 'ally':
-                         case 'allAllies':
-                             // Assumes 'ally' skills can target self if caster is in ownTeam.
-                             // Specific skill logic might need refinement (e.g., cannot heal self).
-                             hasValidTargets = livingOwnTeam.length > 0;
-                             break;
-                         case 'self':
-                         case 'none': // Skills with no target are always valid if caster is alive
-                             hasValidTargets = true; // Caster is alive check happens at method start
-                             break;
-                         default:
-                             console.warn(`Unknown target type: ${currentTargetType} for skill ${metadata.name}. Assuming requires enemy.`);
-                             hasValidTargets = livingTargetTeam.length > 0;
-                     }
-
-                     if (!hasValidTargets) {
-                         console.log(`${this.name} cannot use ${metadata.name}: No valid targets.`);
-                         continue; // Skip to the next skill in the loop
-                     }
-                     // --- End Target Validation ---
-
-                     // Create the action object (only if validation passed)
-                     const action = {
-                         name: metadata.name,
-                         caster: this,
-                         targetType: currentTargetType,
-                         execute: () => {
-                             console.log(`${this.name} executes skill: ${metadata.name}`);
-                             // Call the skill method from the definition instance
-                             // Pass the potentially filtered living teams, although the skill might re-filter anyway
-                             this.definition[methodName](this, livingTargetTeam, livingOwnTeam);
-                             // Set cooldown
-                             this.skillCooldowns[methodName] = metadata.cooldown || 0;
-                             console.log(`${metadata.name} cooldown set to ${this.skillCooldowns[methodName]}`);
-                         }
-                     };
-                     return action; // Return the validated action
-                 } else {
-                      console.warn(`Skill method ${methodName} not found on definition for ${this.name}`);
-                 }
+                                for (const effect of this.attachedEffects) {
+                                    if (effect.isActive && typeof effect.afterAction === 'function') {
+                                        effect.afterAction(context, this, chosenTargets || livingTargetTeam);
+                                    }
+                                }
+                            }
+                        };
+                    }
+                }
             }
         }
 
-        // 2. If no usable skills, return basic attack
         const basicAttackAction = this.getBasicAttackAction(targetTeam);
-        const livingTargets = targetTeam.filter(t => t && !t.isDefeatedStatus());
-        if (livingTargets.length > 0) {
+         if (targetTeam.filter(t => t && !t.isDefeatedStatus()).length > 0) {
             return basicAttackAction;
-        } else {
-            console.log(`${this.name} cannot perform Basic Attack or any skill, passing turn.`);
-            // Return a "Pass" action instead of null
-            return {
-                name: "Pass",
-                caster: this,
-                targetType: 'none', // Indicates no target interaction
-                execute: () => {
-                    console.log(`${this.name} passes their turn.`);
-                    // No actual game effect for passing
-                }
-            };
         }
+
+        return {
+            name: "Pass", caster: this, targetType: 'none',
+            execute: () => console.log(`${this.name} passes their turn.`)
+        };
     }
 
-    // --- Turn Management ---
-
-    tickCooldowns() {
+    tickSkillCooldowns() { 
         if (this.isDefeated) return;
         for (const methodName in this.skillCooldowns) {
             if (this.skillCooldowns[methodName] > 0) {
                 this.skillCooldowns[methodName]--;
-                // console.log(`${this.name}'s ${methodName} cooldown: ${this.skillCooldowns[methodName]}`);
+                // console.log(`${this.name}'s skill ${methodName} cooldown now ${this.skillCooldowns[methodName]}`); // Can be verbose
             }
         }
     }
 
-    // Apply effects that happen over time (DoTs, HoTs)
-    applyStatusEffectsTick() {
-         if (this.isDefeated) return;
-         // Iterate backwards for safe removal
-         for (let i = this.statusEffects.length - 1; i >= 0; i--) {
-             const effect = this.statusEffects[i];
-             console.log(`Ticking effect ${effect.type} on ${this.name}`);
-             // Example: Apply Burn damage
-             if (effect.type === 'burn') {
-                 console.log(`${this.name} takes ${effect.magnitude} burn damage.`);
-                 this.takeDamage(effect.magnitude); // Apply damage directly (might need adjustments)
-             }
-             // Example: Apply Heal over Time
-             if (effect.type === 'regen') {
-                  console.log(`${this.name} regenerates ${effect.magnitude} HP.`);
-                  this.heal(effect.magnitude);
-             }
-
-             // TODO: Add other status effect applications (stat changes, etc.)
-
-             // Decrease duration and remove if expired
-             if (effect.duration > 0) {
-                 effect.duration--;
-                 if (effect.duration <= 0) {
-                     console.log(`Status effect ${effect.type} expired on ${this.name}.`);
-                     this.statusEffects.splice(i, 1);
-                     // TODO: Remove stat modifications if the effect was a buff/debuff
-                 }
-             }
-         }
-    }
-
-    // Called at the start of a character's turn
-    onTurnStart() {
+    // --- NEW: Global Turn Processing ---
+    processGlobalTurnStart(currentGlobalTurn) {
         if (this.isDefeated) return;
-        console.log(`--- ${this.name}'s turn starts ---`);
-        this.tickCooldowns(); // Cooldowns tick down first
-        this.applyStatusEffectsTick(); // Apply DoTs/HoTs
-        // TODO: Check for stun/sleep effects that might prevent action
+        // console.log(`Processing Global Turn ${currentGlobalTurn} Start for ${this.name}`); // Can be verbose
+        const context = this.getEffectContext();
+
+        for (let i = this.attachedEffects.length - 1; i >= 0; i--) {
+            const effect = this.attachedEffects[i];
+            if (!effect.isActive) continue;
+
+            if (typeof effect.tickDuration === 'function') {
+                if (effect.tickDuration(currentGlobalTurn)) { 
+                    effect.onExpire(context);
+                    this.attachedEffects.splice(i, 1);
+                    console.log(`Effect ${effect.name} (ID: ${effect.id}) expired from ${this.name} via tickDuration.`);
+                    continue; 
+                }
+            }
+
+            if (effect.isActive && typeof effect.onTick === 'function') { 
+                if (effect.onTick(context)) { 
+                    effect.onExpire(context); 
+                    this.attachedEffects.splice(i, 1);
+                    console.log(`Effect ${effect.name} (ID: ${effect.id}) processed and removed from ${this.name} during onTick.`);
+                     continue; 
+                }
+            }
+            
+            if (effect.isActive && typeof effect.onGlobalTurnStart === 'function') {
+                effect.onGlobalTurnStart(context, currentGlobalTurn);
+            }
+        }
+        if (this.isDefeatedStatus() && this.display && !this.display.isDestroyed) { // Check if DoT defeated
+            this.display.showDefeated();
+        }
     }
 
-    // Called at the end of a character's turn
-    onTurnEnd() {
+    processGlobalTurnEnd(currentGlobalTurn) {
+        if (this.isDefeated) return; 
+        // console.log(`Processing Global Turn ${currentGlobalTurn} End for ${this.name}`); // Can be verbose
+        const context = this.getEffectContext();
+        for (const effect of this.attachedEffects) {
+            if (effect.isActive && typeof effect.onGlobalTurnEnd === 'function') {
+                effect.onGlobalTurnEnd(context, currentGlobalTurn);
+            }
+        }
+    }
+
+    // --- REFINED: Action Phase Hooks ---
+    onActionPhaseStart(currentGlobalTurn) { 
         if (this.isDefeated) return;
-        // Reduce duration of temporary effects applied *during* the turn (less common)
-        // console.log(`--- ${this.name}'s turn ends ---`);
+        // console.log(`--- ${this.name}'s Action Phase starts (Global Turn ${currentGlobalTurn}) ---`); // Already logged by BattleScene
+        const context = this.getEffectContext();
+
+        this.tickSkillCooldowns(); 
+
+        for (let i = this.attachedEffects.length - 1; i >= 0; i--) {
+            const effect = this.attachedEffects[i];
+            if (!effect.isActive) continue;
+
+            if (typeof effect.onActionPhaseStart === 'function') {
+                effect.onActionPhaseStart(context, currentGlobalTurn);
+            }
+        }
     }
 
-    // --- Utility ---
+    onActionPhaseEnd(currentGlobalTurn) { 
+        if (this.isDefeated) return;
+        const context = this.getEffectContext();
+        for (const effect of this.attachedEffects) {
+            if (effect.isActive && typeof effect.onActionPhaseEnd === 'function') {
+                effect.onActionPhaseEnd(context, currentGlobalTurn);
+            }
+        }
+    }
+
 
     resetForBattle() {
-        this.calculateStatsFromLevel(); // Recalculate base stats for level
+        this.calculateStatsFromLevel();
         this.isDefeated = false;
-        this.statusEffects = [];
-        this.initializeSkillCooldowns(); // Reset all cooldowns
-        this.applyInitialPassiveEffects(); // Re-apply passives
-        // Ensure HP is correct after potential maxHP changes from passives
+
+        const context = this.getEffectContext(); 
+        for (const effect of this.attachedEffects) {
+            if (typeof effect.onExpire === 'function') {
+                effect.onExpire(context); 
+            }
+        }
+        this.attachedEffects = [];
+        this.initializeSkillCooldowns();
+
+        if (this.battleSceneContext) {
+            this.applyInitialPassiveEffects();
+        }
         this.currentHp = Math.min(this.currentHp, this.maxHp);
 
         if (this.display) {
@@ -355,23 +368,20 @@ export class BattleCharacter extends BaseCharacter {
         }
     }
 
-    // --- Stat Modification (Example) ---
-    // TODO: Implement a more robust system, potentially tied to status effects
-    modifyStat(statName, amount) {
-        if (statName === 'currentAtk' || statName === 'currentDef' || statName === 'maxHp' /* etc. */) {
+    modifyStat(statName, amount, isTemporary = false) { 
+        if (this.hasOwnProperty(statName)) {
             this[statName] += amount;
             console.log(`${this.name}'s ${statName} modified by ${amount}. New value: ${this[statName]}`);
-            // Ensure HP doesn't exceed new maxHP if it was modified
             if (statName === 'maxHp') {
                 this.currentHp = Math.min(this.currentHp, this.maxHp);
+                if (amount > 0) this.currentHp += amount; 
+                this.currentHp = Math.max(0, Math.min(this.currentHp, this.maxHp));
             }
         } else {
             console.warn(`Cannot modify unknown stat: ${statName}`);
         }
     }
 
-
-    // --- Getters for current battle stats ---
     getCurrentHp() { return this.currentHp; }
     getMaxHp() { return this.maxHp; }
     getCurrentAtk() { return this.currentAtk; }
@@ -379,6 +389,17 @@ export class BattleCharacter extends BaseCharacter {
     isDefeatedStatus() { return this.isDefeated; }
     getTeam() { return this.team; }
 
+    removeEffectsByType(typeOrTypesToRemove, context) {
+        const typesArray = Array.isArray(typeOrTypesToRemove) ? typeOrTypesToRemove : [typeOrTypesToRemove];
+        for (let i = this.attachedEffects.length - 1; i >= 0; i--) {
+            const effect = this.attachedEffects[i];
+            if (typesArray.includes(effect.type)) {
+                effect.onExpire(context); 
+                this.attachedEffects.splice(i, 1);
+                console.log(`Effect ${effect.type} (ID: ${effect.id}) dispelled from ${this.name}.`);
+            }
+        }
+    }
 }
 
 export default BattleCharacter;

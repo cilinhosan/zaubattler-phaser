@@ -19,9 +19,8 @@ class MenuInstructionScene extends Phaser.Scene { // Renamed class
         // Add Instruction Text (Placeholder)
         const instructionsText = [
             "1. Assemble your team in the pre-battle screen.",
-            "2. Select agents from your member reserve and move them to your team slots.",
-            "3. Click 'Battle!' to start the fight.",
-            "4. See how many fights you can win without dying.",
+            "2. Select team members from your member reserve and move them to your team slots.",
+            "3. See how many battles you can win consecutively.",
             "",
             "Good luck!"
         ];

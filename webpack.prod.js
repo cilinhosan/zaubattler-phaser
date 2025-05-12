@@ -13,7 +13,8 @@ module.exports = merge(common, {
     assetModuleFilename: 'assets/[contenthash][ext][query]'
   },
   // Add optimization options if needed
-  // optimization: {
-  //   minimize: true,
-  // },
+  // uncommented this to try minimize option
+  optimization: {
+    minimize: true,
+  },
 });
