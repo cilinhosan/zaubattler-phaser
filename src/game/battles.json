@@ -2,21 +2,22 @@
   {
     "battleId": 1,
     "enemies": [
-      { "type": "wolf"}
+      { "type": "cursedWolf"}
     ]
   },
   {
     "battleId": 2,
     "enemies": [
-      { "type": "wolf"},
-      { "type": "goblin"}
+      { "type": "cursedWolf"},
+      { "type": "cursedWolf"},
+      { "type": "cursedWolf"}
     ]
   },
   {
     "battleId": 3,
     "enemies": [
         { "type": "werewolf"},
-        { "type": "wolf"},
+        { "type": "cursedWolf"},
         { "type": "goblin"}
     ]
   }

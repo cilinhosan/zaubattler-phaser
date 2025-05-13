@@ -5,7 +5,7 @@ import { KatherineDefinition } from './character_definitions/KatherineDefinition
 import { ElzetteDefinition } from './character_definitions/ElzetteDefinition.js';
 import { GoblinDefinition } from './character_definitions/GoblinDefinition.js';
 import { OrcDefinition } from './character_definitions/OrcDefinition.js';
-import { WolfDefinition } from './character_definitions/WolfDefinition.js';
+import { CursedWolfDefinition } from './character_definitions/CursedWolfDefinition.js'; // Updated import
 import { WerewolfDefinition } from './character_definitions/WerewolfDefinition.js';
 
 // Re-export ELEMENTS from BaseDefinitions for convenience if needed elsewhere,
@@ -17,7 +17,7 @@ export const characterDefinitionClasses = {
     "katherine": KatherineDefinition,
     "goblin": GoblinDefinition,
     "orc": OrcDefinition,
-    "wolf": WolfDefinition,
+    "cursedWolf": CursedWolfDefinition, // Updated ID and class
     "werewolf": WerewolfDefinition,
     "elzette": ElzetteDefinition
     // Add other character definition classes here by importing them

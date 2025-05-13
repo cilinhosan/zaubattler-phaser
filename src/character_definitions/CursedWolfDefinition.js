@@ -1,4 +1,4 @@
-// src/character_definitions/WolfDefinition.js
+// src/character_definitions/CursedWolfDefinition.js
 import { CharacterDefinition, FACTION } from './BaseDefinitions.js';
 import * as SkillHelper from '../game/SkillHelper.js';
 import AttachedEffect from '../game/AttachedEffect.js';
@@ -39,40 +39,41 @@ class PackHunterEffect extends AttachedEffect {
 }
 
 
-export class WolfDefinition extends CharacterDefinition {
+export class CursedWolfDefinition extends CharacterDefinition { // Renamed class
      constructor() {
         super({
-            id: "wolf",
-            name: "Wolf",
-            stats: { hp: 450, atk: 80, def: 25, critChance: 0.10, critDamage: 1.50 }, // ATK increased to 80
+            id: "cursedWolf", // Changed ID
+            name: "Cursed Wolf", // Changed name
+            stats: { hp: 850, atk: 80, def: 50, critChance: 0.10, critDamage: 1.50 }, // ATK increased to 80
             faction: FACTION.NEUTRAL,
             playableByPlayer: false,
-            description: "A wild wolf.",
-            faceIconKey: 'default_character_icon',
+            description: "A wild, cursed wolf.", // Updated description
+            faceIconKey: 'default_character_icon', // Consider updating if new assets are made
             faceIconPath: 'assets/default_character_ilustration_face_icon.png',
-            battleIconKey: 'default_enemy_icon',
+            battleIconKey: 'default_enemy_icon', // Consider updating if new assets are made
             battleIconPath: 'assets/default_enemy_illustration_4_3.png'
         });
 
+        // Update skill IDs to reflect new character ID for clarity, though not strictly necessary if skills are generic
         this.skillMetadata = {
-            skillBite: { id: "wolf_bite", name: "Bite", description: "Deals physical damage.", type: 'active', cooldown: 3, targetType: 'enemy' },
-            skillPackHunter: { id: "wolf_pack_hunter", name: "Pack Hunter", description: "Passive: Increases Critical Hit Chance by 10%.", type: 'passive', applyImmediately: true, modifiesStats: true }
+            skillBite: { id: "cursed_wolf_bite", name: "Bite", description: "Deals physical damage.", type: 'active', cooldown: 3, targetType: 'enemy' },
+            skillPackHunter: { id: "cursed_wolf_pack_hunter", name: "Pack Hunter", description: "Passive: Increases Critical Hit Chance by 10%.", type: 'passive', applyImmediately: true, modifiesStats: true }
         };
     }
 
     skillBite(caster, targets, ownTeam, casterContext) {
         const battleScene = casterContext.scene;
         if (!battleScene) {
-            console.error("WolfDefinition.skillBite: BattleScene context not available!");
+            console.error("CursedWolfDefinition.skillBite: BattleScene context not available!"); // Updated class name in error
             return;
         }
 
         const livingTargets = targets.filter(t => t && !t.isDefeatedStatus());
         if (livingTargets.length > 0) {
             const target = livingTargets[Math.floor(Math.random() * livingTargets.length)];
-            const damage = caster.currentAtk * 1.0; // Adjusted multiplier for new ATK (80 * 1.0 = 80)
+            const damage = Math.floor(caster.currentAtk * 1.8); // Adjusted multiplier for new ATK (80 * 1.0 = 80)
             console.log(`${caster.getName()} bites ${target.getName()}!`);
-            SkillHelper.dealDamage(caster, target, Math.floor(damage), FACTION.NEUTRAL, { skillId: this.skillMetadata.skillBite.id }, battleScene);
+            SkillHelper.dealDamage(caster, target, damage, FACTION.NEUTRAL, { skillId: this.skillMetadata.skillBite.id }, battleScene);
         } else {
             console.log(`${caster.getName()} used Bite, but no targets were available.`);
         }
