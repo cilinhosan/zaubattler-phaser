@@ -7,6 +7,7 @@ import GameDataManager from './game/GameDataManager.js'; // Import the GameDataM
 import setupLoadingIndicator from './LoadingIndicator.js'; // Import the utility function (Corrected path)
 import AssetLoader from './AssetLoader.js'; // Import the AssetLoader class
 import BattleRewardScene from './BattleRewardScene.js'; // Import the reward scene
+import menuBackground3 from '../assets/menu_background_illustration_3.jpg';
 
 class PreBattleSetupScene extends Phaser.Scene {
     constructor() {
@@ -18,6 +19,7 @@ class PreBattleSetupScene extends Phaser.Scene {
 
     preload() {
         console.log('PreBattleSetupScene: preload()');
+        this.load.image('menuBg3', menuBackground3);
 
         // --- Load Manifest ---
         const manifest = this.registry.get('assetManifest');
@@ -115,6 +117,12 @@ class PreBattleSetupScene extends Phaser.Scene {
         console.log("[Create Debug] No win detected or result already processed. Proceeding with normal setup.");
 
         // --- Original Create Logic Starts Here ---
+        // Set background image
+        let bg = this.add.image(0, 0, 'menuBg3').setOrigin(0, 0);
+        let scaleX = this.cameras.main.width / bg.width;
+        let scaleY = this.cameras.main.height / bg.height;
+        let scale = Math.max(scaleX, scaleY);
+        bg.setScale(scale).setScrollFactor(0);
         // this.add.image(400, 300, 'background'); // Add background if you have one
 
         // Get current team slots and inventory from the GameDataManager

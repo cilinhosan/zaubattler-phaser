@@ -22,6 +22,16 @@ import elzetteBattleIcon from '../assets/elzette_illustration_4_3.png';
 // import katherineFaceIcon from '../assets/katherine_face.png';
 // import katherineBattleIcon from '../assets/katherine_battle.png';
 
+// Menu Background Illustrations
+import menuBackground1 from '../assets/menu_background_illustration_1.jpg';
+import menuBackground2 from '../assets/menu_background_illustration_2.jpg';
+import menuBackground3 from '../assets/menu_background_illustration_3.jpg';
+import menuBackground4 from '../assets/menu_background_illustration_4.jpg';
+import menuBackground5 from '../assets/menu_background_illustration_5.jpg';
+import menuBackground6 from '../assets/menu_background_illustration_6.jpg';
+import menuBackground7 from '../assets/menu_background_illustration_7.jpg';
+// UI Icons
+import fullscreenIcon from '../assets/fullscreen_icon.png';
 // Log imported paths (optional, for debugging build process)
 // The variables hold the final hashed paths at runtime, but are useful here
 // to confirm Webpack is resolving them during the build.

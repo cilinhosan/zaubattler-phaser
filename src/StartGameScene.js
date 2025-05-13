@@ -1,13 +1,22 @@
 import Phaser from "phaser";
+import menuBackground7 from '../assets/menu_background_illustration_7.jpg';
 
 class StartGameScene extends Phaser.Scene {
     constructor() {
         super({ key: "StartGameScene" });
     }
 
+    preload() {
+        this.load.image('menuBg7', menuBackground7);
+    }
+
     create() {
-        // Set background color
-        this.cameras.main.setBackgroundColor('#1a1a1a'); // Dark grey color
+        // Set background image
+        let bg = this.add.image(0, 0, 'menuBg7').setOrigin(0, 0);
+        let scaleX = this.cameras.main.width / bg.width;
+        let scaleY = this.cameras.main.height / bg.height;
+        let scale = Math.max(scaleX, scaleY);
+        bg.setScale(scale).setScrollFactor(0);
 
         // Add game title (Copied from MenuScreenScene)
         this.add.text(this.cameras.main.width / 2, this.cameras.main.height / 4, "Zaubattler", {

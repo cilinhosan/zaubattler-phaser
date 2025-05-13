@@ -3,14 +3,24 @@ import Phaser from 'phaser';
 // Unused constants removed
 
 class MenuCharacterDisplay extends Phaser.GameObjects.Container { // Inherit from Container
-    constructor(scene, x, y, character) {
+    constructor(scene, x, y, character, options = {}) { // options defaults to empty object
         super(scene, x, y); // Call Container constructor
 
         this.character = character;
+        this.options = options; // Store options
 
-        // Use fixed dimensions for the inventory display box
-        this.rectWidth = 100; // Make it square, slightly larger than icon
+        // Default dimensions and style properties
+        this.displayStyle = 'menu';
+        this.rectWidth = 100;
         this.rectHeight = 100;
+        this.nameFontSize = '16px';
+
+        if (this.options && this.options.style === 'battle') {
+            this.displayStyle = 'battle';
+            this.rectWidth = 240; // Battle style dimensions (4:3 aspect ratio)
+            this.rectHeight = 180;
+            this.nameFontSize = '24px'; // Larger font for battle style
+        }
 
         // Store position relative to container (passed as x, y)
         // Note: Container's position is set by scene.add.existing(this) or similar
@@ -35,29 +45,45 @@ class MenuCharacterDisplay extends Phaser.GameObjects.Container { // Inherit fro
 
         // --- Add Icon ---
         // TODO: Use actual character icon if available, fallback to default
-        // Get face icon key from definition, fallback to default character icon
-        const definition = this.character.definition; // Assuming character instance has .definition
-        const faceIconKey = definition?.faceIconKey || 'default_character_icon';
+        // Get icon key based on style
+        const definition = this.character.definition;
+        let iconKeyToUse;
+        let defaultIconKey;
+
+        if (this.displayStyle === 'battle') {
+            iconKeyToUse = definition?.battleIconKey;
+            defaultIconKey = 'default_battle_icon'; // Default 4:3 player icon
+        } else { // Default to 'menu' style
+            iconKeyToUse = definition?.faceIconKey;
+            defaultIconKey = 'default_character_icon'; // Default face icon
+        }
+        iconKeyToUse = iconKeyToUse || defaultIconKey;
+
         try {
             // Ensure the icon key is valid and loaded
-            if (this.scene.textures.exists(faceIconKey)) {
-                // Center the 90x90 icon within the 100x100 box
-                this.icon = this.scene.add.image(this.rectWidth / 2, this.rectHeight / 2, faceIconKey);
-                this.icon.setDisplaySize(99, 99);
+            if (this.scene.textures.exists(iconKeyToUse)) {
+                this.icon = this.scene.add.image(this.rectWidth / 2, this.rectHeight / 2, iconKeyToUse);
+                this.icon.setDisplaySize(this.rectWidth, this.rectHeight); // Icon fills the rect
                 this.add(this.icon); // Add icon to the container
             } else {
-                 console.warn(`Face icon key '${faceIconKey}' not found for ${this.character.name}.`);
-                 // Optionally add a placeholder graphic
+                 console.warn(`Icon key '${iconKeyToUse}' (style: ${this.displayStyle}) not found for ${this.character.name}. Attempting default: '${defaultIconKey}'`);
+                 if (this.scene.textures.exists(defaultIconKey)) {
+                    this.icon = this.scene.add.image(this.rectWidth / 2, this.rectHeight / 2, defaultIconKey);
+                    this.icon.setDisplaySize(this.rectWidth, this.rectHeight); // Icon fills the rect
+                    this.add(this.icon);
+                 } else {
+                    console.error(`Ultimate default icon key '${defaultIconKey}' also not found.`);
+                 }
             }
         } catch (e) {
-            console.error(`Error creating icon for ${this.character.name}:`, e);
+            console.error(`Error creating icon for ${this.character.name} (style: ${this.displayStyle}):`, e);
         }
 
 
         // Text for the character name (below the icon/box)
         const displayName = this.character.name || this.character.type || 'Unknown';
         this.text = this.scene.add.text(this.rectWidth / 2, this.rectHeight + 5, displayName, { // Position below box
-            fontSize: '16px', // Smaller font for inventory
+            fontSize: this.nameFontSize, // Use dynamic font size
             fill: '#fff',
             align: 'center',
             wordWrap: { width: this.rectWidth - 10 } // Wrap text

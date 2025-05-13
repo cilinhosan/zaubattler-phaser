@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import GameDataManager from './game/GameDataManager.js'; // Import the GameDataManager
 import MenuCharacterDisplay from './game/MenuCharacterDisplay.js'; // Import MenuCharacterDisplay
+import menuBackground6 from '../assets/menu_background_illustration_6.jpg';
 
 class EndGameScene extends Phaser.Scene {
     constructor() {
@@ -10,10 +11,16 @@ class EndGameScene extends Phaser.Scene {
     preload() {
         // Load any assets needed for the end game screen, e.g., background
         // this.load.image('endBackground', 'assets/end_background.png');
+        this.load.image('menuBg6', menuBackground6);
     }
 
     create(data) {
-        // Optional: Add background image
+        // Set background image
+        let bg = this.add.image(0, 0, 'menuBg6').setOrigin(0, 0);
+        let scaleX = this.cameras.main.width / bg.width;
+        let scaleY = this.cameras.main.height / bg.height;
+        let scale = Math.max(scaleX, scaleY);
+        bg.setScale(scale).setScrollFactor(0);
         // this.add.image(400, 300, 'endBackground');
 
         const centerX = this.cameras.main.width / 2;

@@ -1,13 +1,22 @@
 import Phaser from "phaser";
+import menuBackground2 from '../assets/menu_background_illustration_2.jpg';
 
 class MenuInstructionScene extends Phaser.Scene { // Renamed class
     constructor() {
         super({ key: "MenuInstructionScene" }); // Renamed scene key
     }
 
+    preload() {
+        this.load.image('menuBg2', menuBackground2);
+    }
+
     create() {
-        // Set background color
-        this.cameras.main.setBackgroundColor('#1a1a1a'); // Dark grey color
+        // Set background image
+        let bg = this.add.image(0, 0, 'menuBg2').setOrigin(0, 0);
+        let scaleX = this.cameras.main.width / bg.width;
+        let scaleY = this.cameras.main.height / bg.height;
+        let scale = Math.max(scaleX, scaleY);
+        bg.setScale(scale).setScrollFactor(0);
 
         // Add Instructions Title
         this.add.text(this.cameras.main.width / 2, 100, "Instructions", {

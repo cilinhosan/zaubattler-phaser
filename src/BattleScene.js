@@ -7,6 +7,7 @@ import GameDataManager from './game/GameDataManager.js';
 // import BattleCharacter from './game/BattleCharacter.js';
 import { getCharacterDefinition } from './CharacterDefinitionList.js';
 import AssetLoader from './AssetLoader.js';
+import menuBackground4 from '../assets/menu_background_illustration_4.jpg';
 
 const MAX_SLOTS = 5;
 
@@ -25,6 +26,7 @@ class BattleScene extends Phaser.Scene {
 
     preload() {
         // ... (preload logic remains largely the same, using the version from context)
+        this.load.image('menuBg4', menuBackground4);
         console.log("BattleScene: Preloading assets for current battle...");
         const manifest = this.registry.get('assetManifest');
 
@@ -65,7 +67,12 @@ class BattleScene extends Phaser.Scene {
     }
 
     create() {
-        this.cameras.main.setBackgroundColor('#1a1a1a');
+        // Set background image
+        let bg = this.add.image(0, 0, 'menuBg4').setOrigin(0, 0);
+        let scaleX = this.cameras.main.width / bg.width;
+        let scaleY = this.cameras.main.height / bg.height;
+        let scale = Math.max(scaleX, scaleY);
+        bg.setScale(scale).setScrollFactor(0);
 
         this.playerTeam = GameDataManager.getCurrentBattlePlayerTeam();
         this.enemyTeam = GameDataManager.getCurrentBattleEnemyTeam();

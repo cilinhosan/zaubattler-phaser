@@ -3,6 +3,7 @@ import GameDataManager from './game/GameDataManager'; // Import GameDataManager
 // Import necessary components
 import { getRandomCharacters } from './game/starterCharacterPool.js';
 import MenuCharacterDisplay from './game/MenuCharacterDisplay.js';
+import menuBackground5 from '../assets/menu_background_illustration_5.jpg';
 
 export default class BattleRewardScene extends Phaser.Scene {
     constructor() {
@@ -13,9 +14,17 @@ export default class BattleRewardScene extends Phaser.Scene {
 
     preload() {
         // Preload assets if needed - Assuming face icons are loaded in PreloaderScene
+        this.load.image('menuBg5', menuBackground5);
     }
 
     create() {
+        // Set background image
+        let bg = this.add.image(0, 0, 'menuBg5').setOrigin(0, 0);
+        let scaleX = this.cameras.main.width / bg.width;
+        let scaleY = this.cameras.main.height / bg.height;
+        let scale = Math.max(scaleX, scaleY);
+        bg.setScale(scale).setScrollFactor(0);
+
         const gameDataManager = GameDataManager; // Use the imported instance directly
         this.recruitedInThisScene.clear(); // Reset recruited set for this instance
 
@@ -25,16 +34,21 @@ export default class BattleRewardScene extends Phaser.Scene {
         const screenHeight = this.cameras.main.height;
 
         // Title
-        this.add.text(screenCenterX, 50, 'Battle Rewards', { fontSize: '32px', fill: '#fff' }).setOrigin(0.5);
+        this.add.text(screenCenterX, 50, 'Battle Rewards', { fontSize: '48px', fill: '#fff' }).setOrigin(0.5); // Increased size
 
         // --- Character Display Area ---
-        const displayWidth = 100; // Width of MenuCharacterDisplay box
-        const displayHeight = 100; // Height of MenuCharacterDisplay box (icon area)
-        const totalDisplayHeight = 130; // Approximate total height including name text
-        const numCharacters = 5;
+        // Use dimensions for "battle" style MenuCharacterDisplay
+        const displayWidth = 240; // Width for battle style
+        const displayHeight = 180; // Height for battle style
+        // Estimate total height: box height + space + name text height
+        // Name text font size is 24px for battle style. Approx height ~30px.
+        const nameTextHeightEstimate = 30;
+        const totalDisplayHeight = displayHeight + 5 + nameTextHeightEstimate; // Approximate total height including name text
+
+        const numCharacters = 3; // Reduced for larger displays
         const spacing = (screenWidth - (numCharacters * displayWidth)) / (numCharacters + 1); // Calculate spacing
 
-        // Get 5 random characters
+        // Get random characters
         const randomCharacters = getRandomCharacters(numCharacters);
 
         if (randomCharacters.length < numCharacters) {
@@ -53,26 +67,29 @@ export default class BattleRewardScene extends Phaser.Scene {
             const displayX = displayCenterX - displayWidth / 2;
             const displayY = displayCenterY - displayHeight / 2; // Position based on the box part
 
-            // Create and add the character display
-            const characterDisplay = new MenuCharacterDisplay(this, displayX, displayY, character);
+            // Create and add the character display using "battle" style
+            const characterDisplay = new MenuCharacterDisplay(this, displayX, displayY, character, { style: 'battle' });
             this.add.existing(characterDisplay);
 
             // Cost text (Positioned above the display)
-            const costText = this.add.text(displayCenterX, displayY - 20, 'Cost: 1 Ticket', { fontSize: '14px', fill: '#fff' }).setOrigin(0.5);
+            // displayY is the top of the characterDisplay container
+            const costText = this.add.text(displayCenterX, displayY - 30, 'Cost: 1 Ticket', { fontSize: '24px', fill: '#fff' }).setOrigin(0.5); // Increased size, adjusted Y
 
             // Recruit button (Positioned below the display)
-            const buttonY = displayY + totalDisplayHeight + 10; // Place below the estimated total height
+            // displayY + totalDisplayHeight is roughly the bottom of the character name text
+            const buttonY = displayY + totalDisplayHeight + 30; // Place below the estimated total height, more spacing for larger button
 
             // Recruit Button Text (Interactive)
-            const recruitText = this.add.text(displayCenterX, buttonY, 'Recruit', { fontSize: '18px', fill: '#ffffff' }) // Start white
+            const recruitText = this.add.text(displayCenterX, buttonY, 'Recruit', { fontSize: '27px', fill: '#ffffff' }) // Increased size
                 .setOrigin(0.5)
                 .setInteractive();
 
-            // Recruit Button Outline
+            // Recruit Button Outline - redraw after text potentially changes size
             const recruitButtonOutline = this.add.graphics();
-            const textBounds = recruitText.getBounds();
+            const textBounds = recruitText.getBounds(); // Get bounds of the now larger text
             recruitButtonOutline.lineStyle(2, 0xffffff, 1);
-            recruitButtonOutline.strokeRect(textBounds.x - 10, textBounds.y - 5, textBounds.width + 20, textBounds.height + 10);
+            // Adjust padding if necessary for larger text
+            recruitButtonOutline.strokeRect(textBounds.x - 15, textBounds.y - 8, textBounds.width + 30, textBounds.height + 16);
 
             // Store references
             const rewardItem = {
@@ -139,8 +156,10 @@ export default class BattleRewardScene extends Phaser.Scene {
                         // Disable button and update appearance
                         recruitText.disableInteractive(); // Disable the text
                         recruitText.setFill('#888888'); // Grey out text
-                        recruitButtonOutline.clear().lineStyle(2, 0x888888, 1).strokeRect(textBounds.x - 10, textBounds.y - 5, textBounds.width + 20, textBounds.height + 10); // Grey outline
+                        // Update text and redraw outline for "Recruited" state
                         recruitText.setText('Recruited');
+                        const newTextBounds = recruitText.getBounds(); // Get bounds of "Recruited"
+                        recruitButtonOutline.clear().lineStyle(2, 0x888888, 1).strokeRect(newTextBounds.x - 15, newTextBounds.y - 8, newTextBounds.width + 30, newTextBounds.height + 16); // Grey outline
                         // Stop hover effect if it was active
                         if (recruitHoverTween) {
                             recruitHoverTween.stop();
@@ -162,19 +181,20 @@ export default class BattleRewardScene extends Phaser.Scene {
         }
 
         // Ticket Count Display
-        this.ticketText = this.add.text(screenCenterX, screenHeight - 50, `Tickets: ${gameDataManager.getTickets()}`, { fontSize: '24px', fill: '#fff' }).setOrigin(0.5); // Store reference
+        this.ticketText = this.add.text(screenCenterX, screenHeight - 70, `Tickets: ${gameDataManager.getTickets()}`, { fontSize: '36px', fill: '#fff' }).setOrigin(0.5); // Increased size, adjusted Y
 
         // Next Battle Button
         // Next Battle Button Text (Interactive)
-        const nextButtonText = this.add.text(screenWidth - 100, screenHeight - 50, 'Next Battle', { fontSize: '24px', fill: '#ffffff' }) // White text
+        const nextButtonText = this.add.text(screenWidth - 150, screenHeight - 70, 'Next Battle', { fontSize: '36px', fill: '#ffffff' }) // Increased size, adjusted X and Y
             .setOrigin(0.5)
             .setInteractive();
 
         // Next Battle Button Outline
         const nextButtonOutline = this.add.graphics();
-        const nextBounds = nextButtonText.getBounds();
+        const nextBounds = nextButtonText.getBounds(); // Get bounds of the now larger text
         nextButtonOutline.lineStyle(2, 0xffffff, 1); // White outline
-        nextButtonOutline.strokeRect(nextBounds.x - 10, nextBounds.y - 5, nextBounds.width + 20, nextBounds.height + 10);
+        // Adjust padding if necessary for larger text
+        nextButtonOutline.strokeRect(nextBounds.x - 15, nextBounds.y - 8, nextBounds.width + 30, nextBounds.height + 16);
 
         // Next Battle Button Hover Effects
         nextButtonText.on('pointerover', () => {

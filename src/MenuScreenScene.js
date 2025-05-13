@@ -2,15 +2,27 @@ import Phaser from "phaser";
 import MenuCharacter from "./game/MenuCharacter.js"; // Import MenuCharacter
 import { getRandomCharacters } from "./game/starterCharacterPool.js"; // Import the new function
 import GameDataManager from "./game/GameDataManager.js"; // Import the GameDataManager singleton
+import menuBackground1 from '../assets/menu_background_illustration_1.jpg';
+import fullscreenIcon from '../assets/fullscreen_icon.png'; // Import the fullscreen icon
 
 class MenuScreenScene extends Phaser.Scene {
     constructor() {
         super({key: "MenuScreenScene"});
     }
 
+    preload() {
+        this.load.image('menuBg1', menuBackground1);
+        this.load.image('fullscreenIcon', fullscreenIcon); // Load the fullscreen icon
+    }
+
     create() {
-        // Set background color
-        this.cameras.main.setBackgroundColor('#1a1a1a'); // Dark grey color
+        // Set background image
+        let bg = this.add.image(0, 0, 'menuBg1').setOrigin(0, 0);
+        let scaleX = this.cameras.main.width / bg.width;
+        let scaleY = this.cameras.main.height / bg.height;
+        let scale = Math.max(scaleX, scaleY);
+        bg.setScale(scale).setScrollFactor(0);
+
 
         // Add Start Game button
         const startGameButton = this.add.text(this.cameras.main.width / 2, this.cameras.main.height / 2 - 50, "Start Game", { // Adjusted Y position
@@ -99,28 +111,32 @@ instructionsButton.on('pointerover', () => instructionsButton.setFill('#00ff00')
 
         // --- Add Fullscreen Button ---
         const padding = 20;
-        const fullscreenButton = this.add.text(
+        const fullscreenButton = this.add.image(
             this.cameras.main.width - padding,
             padding,
-            '[ ]', // Simple text representation for fullscreen toggle
-            { fontSize: '32px', fill: '#fff' }
+            'fullscreenIcon' // Use the loaded image key
         )
         .setOrigin(1, 0) // Origin top-right
         .setInteractive();
 
+        // Optionally, scale the icon if it's too large or small
+        fullscreenButton.setScale(0.5); // Example: scale to 50%
+
         fullscreenButton.on('pointerdown', () => {
             if (this.scale.isFullscreen) {
                 this.scale.stopFullscreen();
-                // Optionally change text back, e.g., fullscreenButton.setText('[ ]');
+                // Optionally change icon tint or texture if you have different states (e.g., fullscreen_exit_icon)
+                // fullscreenButton.setTexture('fullscreenIcon'); // Assuming 'fullscreenIcon' is the "enter fullscreen" state
             } else {
                 this.scale.startFullscreen();
-                // Optionally change text, e.g., fullscreenButton.setText('[X]');
+                // Optionally change icon tint or texture
+                // fullscreenButton.setTexture('fullscreenExitIcon'); // Example for an exit icon
             }
         });
 
-        // Optional: Add hover effect
-        fullscreenButton.on('pointerover', () => fullscreenButton.setFill('#00ff00'));
-        fullscreenButton.on('pointerout', () => fullscreenButton.setFill('#ffffff'));
+        // Optional: Add hover effect (tinting for images)
+        fullscreenButton.on('pointerover', () => fullscreenButton.setTint(0x00ff00)); // Green tint on hover
+        fullscreenButton.on('pointerout', () => fullscreenButton.clearTint()); // Remove tint on hover out
 
     }
 }
