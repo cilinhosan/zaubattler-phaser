@@ -696,7 +696,12 @@ class PreBattleSetupScene extends Phaser.Scene {
             console.log(`${characterData.name} found in team slot ${slotIndex}. Removing.`);
             // Remove character from the visual team slot
             this._updateTeamSlotVisual(slotIndex, null);
-            // Update inventory visuals (remove checkmark)
+
+            // Update GameDataManager with the new team state
+            const currentTeamData = this.playerTeamDisplays.map(display => display ? display.data : null);
+            GameDataManager.updateTeam(currentTeamData);
+
+            // Update inventory visuals (remove checkmark/gray-out)
             this._updateInventorySelectionVisuals();
         } else {
             console.warn(`Could not find ${characterData.name} in the team display array.`);
@@ -750,13 +755,17 @@ class PreBattleSetupScene extends Phaser.Scene {
 
             // 3. Mark the newly placed character's inventory display as 'selected' (checkmark) - Handled by _updateInventorySelectionVisuals
 
-            // --- Cleanup ---
+            // --- Update GameDataManager ---
+            const currentTeamData = this.playerTeamDisplays.map(display => display ? display.data : null);
+            GameDataManager.updateTeam(currentTeamData);
+
+            // --- Cleanup & Visual Update ---
             this.isMovingState = false;
             this.selectedInventoryCharacterData = null; // Clear selection after move
             this.selectedInventoryDisplay = null;
             this.playerTeamSlots.forEach(slot => slot.setStrokeStyle(2, 0xffffff)); // Reset slot highlight
             this._hideActionPopup(); // Ensure popup is hidden
-            this._updateInventorySelectionVisuals(); // Update all checkmarks
+            this._updateInventorySelectionVisuals(); // Update all checkmarks/gray-out states
 
             console.log(`Moved ${previouslySelectedData.name} to slot ${slotIndex}.`);
 
@@ -802,26 +811,24 @@ class PreBattleSetupScene extends Phaser.Scene {
         }
     }
     _updateInventorySelectionVisuals() {
-        // Iterate through inventory displays and team displays
-        // Add/remove checkmarks based on whether the character is in the playerTeamDisplays array
-        console.log("Updating inventory selection visuals...");
-        const teamCharacterSet = new Set(
-            this.playerTeamDisplays
-                .filter(display => display !== null)
-                .map(displayObj => displayObj.data) // Get data from {icon, text, data} object
-        );
+        console.log("Updating inventory selection visuals (gray-out only)...");
 
         this.characterInventoryDisplays.forEach(invDisplay => {
             const charData = invDisplay.getData('characterData');
-            const isInTeam = teamCharacterSet.has(charData);
-            // TODO: Add actual checkmark visual to MenuCharacterDisplay class
-            // For now, just log
+            if (!charData || typeof invDisplay.setGrayedOut !== 'function') {
+                // console.warn("Character data or setGrayedOut method missing for an inventory display.", invDisplay);
+                return;
+            }
+
+            // Use GameDataManager.isCharacterInTeam for a more direct check
+            const isInTeam = GameDataManager.isCharacterInTeam(charData);
+
             if (isInTeam) {
-                console.log(`  - ${charData.name} is in team (should have checkmark)`);
-                // invDisplay.showCheckmark(true); // Example method
+                console.log(`  - ${charData.name} is in team (should be grayed out).`);
+                invDisplay.setGrayedOut(true);
             } else {
-                 console.log(`  - ${charData.name} is not in team (no checkmark)`);
-                // invDisplay.showCheckmark(false); // Example method
+                console.log(`  - ${charData.name} is not in team (should not be grayed out).`);
+                invDisplay.setGrayedOut(false);
             }
         });
     }

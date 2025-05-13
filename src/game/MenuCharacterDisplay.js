@@ -75,6 +75,16 @@ class MenuCharacterDisplay extends Phaser.GameObjects.Container { // Inherit fro
         // No need to setInteractive here directly
     }
 
+    setGrayedOut(isGrayedOut) {
+        if (this.icon) {
+            if (isGrayedOut) {
+                this.icon.setTint(0x777777); // Apply a noticeable gray tint
+            } else {
+                this.icon.clearTint(); // Remove tint
+            }
+        }
+    }
+
     // updateHpDisplay method removed - not used in menu context
 
     // shake method removed - battle feedback not needed here
