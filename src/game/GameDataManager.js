@@ -3,6 +3,8 @@
  * Uses a singleton pattern.
  */
 class GameDataManager {
+    static NO_BATTLE_RESULT = Object.freeze({ status: 'NO_RESULT' });
+
     constructor() {
         if (GameDataManager.instance) {
             return GameDataManager.instance;
@@ -16,7 +18,7 @@ class GameDataManager {
         // --- Properties to hold prepared teams for the upcoming battle ---
         this.currentBattlePlayerTeam = null; // Array of BattleCharacter instances
         this.currentBattleEnemyTeam = null; // Array of BattleCharacter instances
-        this.lastBattleResult = null; // Stores the outcome of the last battle { won: boolean }
+        this.lastBattleResult = GameDataManager.NO_BATTLE_RESULT; // Stores the outcome of the last battle
 
         GameDataManager.instance = this;
         console.log("GameDataManager initialized.");
@@ -215,17 +217,23 @@ class GameDataManager {
     setLastBattleResult(result) {
         // Expects result to be an object like { won: true } or { won: false }
         if (result && typeof result.won === 'boolean') {
-            this.lastBattleResult = result;
+            this.lastBattleResult = { ...result }; // Store a copy to prevent external modification
             console.log(`[GameDataManager] Last battle result set:`, this.lastBattleResult);
         } else {
-            console.warn("[GameDataManager] Attempted to set invalid battle result:", result);
-            this.lastBattleResult = null; // Clear if invalid
+            // Do not change lastBattleResult if the input is invalid.
+            // Clearing should be done explicitly via clearLastBattleResult().
+            console.warn("[GameDataManager] Attempted to set an invalid battle result object. Result not changed. Received:", result);
         }
     }
 
     getLastBattleResult() {
         // console.log("[GameDataManager] Getting last battle result:", this.lastBattleResult);
         return this.lastBattleResult;
+    }
+
+    clearLastBattleResult() {
+        this.lastBattleResult = GameDataManager.NO_BATTLE_RESULT;
+        console.log("[GameDataManager] Last battle result cleared to NO_RESULT state.");
     }
 
     /**
@@ -240,7 +248,7 @@ class GameDataManager {
         // Also clear prepared battle teams
         this.currentBattlePlayerTeam = null;
         this.currentBattleEnemyTeam = null;
-        this.lastBattleResult = null; // Also clear the last battle result
+        this.clearLastBattleResult(); // Use the new method to clear to the defined state
         console.log("GameDataManager: State reset (tickets, character inventory, team, battle index, prepared teams, and last battle result cleared).");
     }
 }

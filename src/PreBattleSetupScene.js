@@ -95,7 +95,7 @@ class PreBattleSetupScene extends Phaser.Scene {
         const lastBattleResult = GameDataManager.getLastBattleResult();
         console.log("[Create Debug] Checked lastBattleResult:", lastBattleResult);
 
-        if (lastBattleResult && lastBattleResult.won === true) {
+        if (lastBattleResult !== GameDataManager.NO_BATTLE_RESULT && lastBattleResult.won === true) {
             console.log("[Create Debug] Win detected! Redirecting to BattleRewardScene.");
             const battleIndex = GameDataManager.getCurrentBattleIndex(); // Index of completed battle
 
@@ -104,9 +104,9 @@ class PreBattleSetupScene extends Phaser.Scene {
             console.log(`[Create Debug] Awarding ${ticketReward} tickets.`);
             GameDataManager.addTickets(ticketReward);
 
-            // Clear the result flag so this doesn't trigger again unintentionally
-            GameDataManager.setLastBattleResult(null);
-            console.log("[Create Debug] Cleared lastBattleResult in GameDataManager.");
+            // DO NOT clear the result flag here. BattleRewardScene will handle it.
+            // GameDataManager.setLastBattleResult(null); // OLD LINE - REMOVED
+            // console.log("[Create Debug] Cleared lastBattleResult in GameDataManager."); // OLD LINE - REMOVED
 
             // Start the reward scene
             this.scene.start('BattleRewardScene', { battleIndex: battleIndex });
@@ -443,21 +443,22 @@ class PreBattleSetupScene extends Phaser.Scene {
         const lastBattleResult = GameDataManager.getLastBattleResult();
         console.log("[Wake Debug] lastBattleResult:", lastBattleResult); // <-- ADD LOG
 
-        if (lastBattleResult && lastBattleResult.won === true) { // <-- Explicit check for true
-            console.log("[Wake Debug] Win condition met (lastBattleResult.won is true)."); // <-- ADD LOG
+        if (lastBattleResult !== GameDataManager.NO_BATTLE_RESULT && lastBattleResult.won === true) {
+            console.log("[Wake Debug] Win condition met (lastBattleResult.won is true).");
             const battleIndex = GameDataManager.getCurrentBattleIndex(); // Get index of the completed battle
 
             // Award tickets
             const ticketReward = this._getTicketReward(battleIndex);
             console.log(`PreBattleSetupScene: Awarding ${ticketReward} tickets.`);
-            GameDataManager.addTickets(ticketReward); // Assume this method exists
+            GameDataManager.addTickets(ticketReward);
 
             // Transition to Reward Scene
-            console.log("[Wake Debug] Attempting to start BattleRewardScene..."); // <-- ADD LOG
+            // BattleRewardScene will be responsible for clearing the lastBattleResult
+            console.log("[Wake Debug] Attempting to start BattleRewardScene...");
             this.scene.start('BattleRewardScene', { battleIndex: battleIndex });
-            console.log("[Wake Debug] this.scene.start('BattleRewardScene') called."); // <-- ADD LOG
+            console.log("[Wake Debug] this.scene.start('BattleRewardScene') called.");
             return; // Stop further execution in wake()
-        } else { // <-- ADD ELSE
+        } else {
             console.log("[Wake Debug] Win condition NOT met. Proceeding with next battle setup."); // <-- ADD LOG
             // --- If Lost or No Battle Result, Proceed with Setup for Next Battle ---
             console.log("PreBattleSetupScene: Player lost or no battle result, setting up next battle.");

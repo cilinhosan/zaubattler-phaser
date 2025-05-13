@@ -187,7 +187,20 @@ export default class BattleRewardScene extends Phaser.Scene {
         // Next Battle Button Action
         nextButtonText.on('pointerdown', () => { // Use text for pointerdown
              console.log("Next Battle button clicked - transitioning...");
+             // Clear the last battle result before transitioning
+             GameDataManager.clearLastBattleResult();
+             console.log("BattleRewardScene: Cleared lastBattleResult.");
              this.scene.start('PreBattleSetupScene'); // Or wherever the game loop continues
+        });
+
+        // It's also good practice to clear the result if the scene is shut down unexpectedly
+        // or if there are other ways to exit it, though the button is the primary one.
+        this.events.on('shutdown', () => {
+            // Check if it was already cleared by the button press to avoid double logging
+            if (GameDataManager.getLastBattleResult() !== GameDataManager.NO_BATTLE_RESULT) {
+                GameDataManager.clearLastBattleResult();
+                console.log("BattleRewardScene: Cleared lastBattleResult on shutdown.");
+            }
         });
     }
 
