@@ -95,30 +95,54 @@ class EndGameScene extends Phaser.Scene {
             fill: '#ffffff' // Start with white color
         })
             .setOrigin(0.5)
-            .setInteractive();
+            // .setInteractive(); // Text is no longer directly interactive
 
         // Add outline to the menu button
         const buttonBounds = menuButton.getBounds();
         const buttonOutline = this.add.graphics();
+        const buttonPadding = { x: 10, y: 5 };
+        const buttonHitArea = new Phaser.Geom.Rectangle(
+            buttonBounds.x - buttonPadding.x,
+            buttonBounds.y - buttonPadding.y,
+            buttonBounds.width + 2 * buttonPadding.x,
+            buttonBounds.height + 2 * buttonPadding.y
+        );
         buttonOutline.lineStyle(2, 0xffffff, 1); // White outline
-        buttonOutline.strokeRect(buttonBounds.x - 10, buttonBounds.y - 5, buttonBounds.width + 20, buttonBounds.height + 10); // Add padding
+        buttonOutline.strokeRect(buttonHitArea.x, buttonHitArea.y, buttonHitArea.width, buttonHitArea.height); // Add padding
+        buttonOutline.setInteractive(buttonHitArea, Phaser.Geom.Rectangle.Contains);
+
 
         // Ensure the outline is drawn relative to the potentially moved button
-        this.children.bringToTop(buttonOutline); // Bring outline above button text if needed
-        this.children.bringToTop(menuButton);    // Bring button text above outline
+        // this.children.bringToTop(buttonOutline); // Graphics objects are typically drawn in order of addition
+        // this.children.bringToTop(menuButton);
 
-        menuButton.on('pointerdown', () => {
+        buttonOutline.on('pointerdown', () => { // Listener on outline
             // Reset global game state (inventory, team) before returning to menu
             GameDataManager.reset();
             this.scene.start('MenuScreenScene');
         });
 
-         menuButton.on('pointerover', () => {
+        let menuButtonHoverTween = null;
+        buttonOutline.on('pointerover', () => { // Listener on outline
             menuButton.setFill('#00ff00'); // New Green on hover
+            if (menuButtonHoverTween) menuButtonHoverTween.stop();
+            menuButtonHoverTween = this.tweens.add({
+                targets: menuButton,
+                alpha: { from: 1, to: 0.5 },
+                ease: 'Sine.easeInOut',
+                duration: 300,
+                repeat: -1,
+                yoyo: true
+            });
         });
 
-        menuButton.on('pointerout', () => {
+        buttonOutline.on('pointerout', () => { // Listener on outline
             menuButton.setFill('#ffffff'); // Back to white
+            if (menuButtonHoverTween) {
+                menuButtonHoverTween.stop();
+                menuButtonHoverTween = null;
+            }
+            menuButton.setAlpha(1);
         });
     }
 

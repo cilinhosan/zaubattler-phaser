@@ -98,16 +98,20 @@ export class BattleCharacter extends BaseCharacter {
             existingEffect.refreshDuration(effectInstance.duration);
             if (typeof existingEffect.onApply === 'function') { 
                  existingEffect.onApply(this.getEffectContext());
-            }
-            console.log(`Effect ${effectInstance.type} on ${this.name} refreshed.`);
-            return existingEffect;
-        }
+           }
+           const refreshMsg = `Effect ${effectInstance.name || effectInstance.type} on ${this.name} refreshed.`;
+           console.log(refreshMsg);
+           if (this.battleSceneContext) this.battleSceneContext.addBattleLogMessage(refreshMsg);
+           return existingEffect;
+       }
 
-        this.attachedEffects.push(effectInstance);
-        effectInstance.onApply(this.getEffectContext());
-        console.log(`Effect ${effectInstance.type} applied to ${this.name}.`);
-        return effectInstance;
-    }
+       this.attachedEffects.push(effectInstance);
+       effectInstance.onApply(this.getEffectContext());
+       const applyMsg = `Effect ${effectInstance.name || effectInstance.type} applied to ${this.name}.`;
+       console.log(applyMsg);
+       if (this.battleSceneContext) this.battleSceneContext.addBattleLogMessage(applyMsg);
+       return effectInstance;
+   }
 
     removeAttachedEffectById(effectId) {
         const index = this.attachedEffects.findIndex(effect => effect.id === effectId);
@@ -115,7 +119,9 @@ export class BattleCharacter extends BaseCharacter {
             const effect = this.attachedEffects[index];
             effect.onExpire(this.getEffectContext()); 
             this.attachedEffects.splice(index, 1);
-            console.log(`Effect ${effect.type} (ID: ${effect.id}) removed from ${this.name}.`);
+            const removeMsg = `Effect ${effect.name || effect.type} (ID: ${effect.id}) removed from ${this.name}.`;
+            console.log(removeMsg);
+            if (this.battleSceneContext) this.battleSceneContext.addBattleLogMessage(removeMsg);
         }
     }
 
@@ -165,11 +171,17 @@ export class BattleCharacter extends BaseCharacter {
         damageInfo.finalAmount = Math.floor(calculatedDamage);
         this.currentHp -= damageInfo.finalAmount;
         this.currentHp = Math.max(0, this.currentHp);
-        console.log(`${this.name} takes ${damageInfo.finalAmount} ${damageInfo.damageType} damage from ${source ? source.name : 'Unknown'}. HP: ${this.currentHp}/${this.maxHp}`);
+        const damageTakenMsg = `${this.name} takes ${damageInfo.finalAmount} ${damageInfo.damageType} damage${isCrit ? ' (CRIT!)' : ''} from ${source ? source.name : 'an unknown source'}. HP: ${this.currentHp}/${this.maxHp}`;
+        console.log(damageTakenMsg);
+        // The BattleScene's onCharacterActuallyDefeated will log the defeat itself.
+        // Here we log the damage event.
+        if (this.battleSceneContext) this.battleSceneContext.addBattleLogMessage(`${this.name} takes ${damageInfo.finalAmount} ${damageInfo.damageType} damage${isCrit ? ' (CRIT!)' : ''}${source ? ` from ${source.name}` : ''}.`);
 
-        if (this.currentHp <= 0) {
+
+        if (this.currentHp <= 0 && !this.isDefeated) { // Ensure defeat is processed only once
             this.isDefeated = true;
-            console.log(`${this.name} has been defeated!`);
+            // Defeat message is handled by BattleScene.onCharacterActuallyDefeated
+            // console.log(`${this.name} has been defeated!`);
             if (this.battleSceneContext && typeof this.battleSceneContext.onCharacterActuallyDefeated === 'function') {
                 this.battleSceneContext.onCharacterActuallyDefeated(this.getEffectContext(), this);
             }
@@ -189,7 +201,9 @@ export class BattleCharacter extends BaseCharacter {
         const healAmount = Math.max(0, amount);
         this.currentHp += healAmount;
         this.currentHp = Math.min(this.currentHp, this.maxHp);
-        console.log(`${this.name} heals for ${healAmount}. HP: ${this.currentHp}/${this.maxHp}`);
+        const healMsg = `${this.name} heals for ${healAmount}. HP: ${this.currentHp}/${this.maxHp}`;
+        console.log(healMsg);
+        if (this.battleSceneContext) this.battleSceneContext.addBattleLogMessage(`${this.name} heals for ${healAmount}.`);
         if (this.display) {
             this.display.updateHpDisplay(this.currentHp, this.maxHp);
         }
@@ -213,7 +227,9 @@ export class BattleCharacter extends BaseCharacter {
 
                     const livingTargets = targetTeam.filter(t => t && !t.isDefeatedStatus());
                     if (livingTargets.length === 0) {
-                        console.log(`${this.name} tries Basic Attack, but no living targets.`);
+                        const noTargetsMsg = `${this.name} tries Basic Attack, but no living targets.`;
+                        console.log(noTargetsMsg);
+                        if (battleScene) battleScene.addBattleLogMessage(noTargetsMsg);
                         return;
                     }
                     // Use chosenTargets if provided (e.g., by player input), otherwise random.
@@ -224,11 +240,16 @@ export class BattleCharacter extends BaseCharacter {
                                    : livingTargets[Math.floor(Math.random() * livingTargets.length)];
                     
                     if (!target || target.isDefeatedStatus()) { // Final check on the selected target
-                         console.log(`${this.name} tries Basic Attack, but the selected target ${target?.name || 'unknown'} is invalid or defeated.`);
+                         const invalidTargetMsg = `${this.name} tries Basic Attack, but the selected target ${target?.name || 'unknown'} is invalid or defeated.`;
+                         console.log(invalidTargetMsg);
+                         if (battleScene) battleScene.addBattleLogMessage(invalidTargetMsg);
                          return;
                     }
 
-                    console.log(`${this.name} uses Basic Attack on ${target.name}`);
+                    // BattleScene already logs "Character prepares Basic Attack"
+                    // console.log(`${this.name} uses Basic Attack on ${target.name}`);
+                    // if (battleScene) battleScene.addBattleLogMessage(`${this.name} attacks ${target.name}.`);
+
 
                     let baseDamage = this.currentAtk;
                     const isCrit = Math.random() < this.critChance;
@@ -276,7 +297,10 @@ export class BattleCharacter extends BaseCharacter {
                                 
                                 // Skill cooldown is applied when the skill is CHOSEN, not after execution.
                                 this.skillCooldowns[methodName] = metadata.cooldown || 0;
-                                console.log(`${this.name} initiates skill: ${metadata.name} (Cooldown: ${this.skillCooldowns[methodName]})`);
+                                // BattleScene already logs "Character prepares Skill Name"
+                                // console.log(`${this.name} initiates skill: ${metadata.name} (Cooldown: ${this.skillCooldowns[methodName]})`);
+                                // if (battleScene) battleScene.addBattleLogMessage(`${this.name} uses ${metadata.name}.`);
+
 
                                 // The definition's skill method is called here.
                                 // It now returns an array of sub-action functions.
@@ -306,8 +330,10 @@ export class BattleCharacter extends BaseCharacter {
 
         return {
             name: "Pass", caster: this, targetType: 'none',
-            execute: () => { // Pass action also returns an array of sub-actions (empty or a log action)
-                console.log(`${this.name} passes their turn.`);
+            execute: (battleScene) => { // Pass action also returns an array of sub-actions (empty or a log action)
+                // BattleScene already logs this
+                // console.log(`${this.name} passes their turn.`);
+                // if (battleScene) battleScene.addBattleLogMessage(`${this.name} passes the turn.`);
                 return []; // Return an empty array of sub-actions
             }
         };
@@ -335,19 +361,23 @@ export class BattleCharacter extends BaseCharacter {
 
             if (typeof effect.tickDuration === 'function') {
                 if (effect.tickDuration(currentGlobalTurn)) { 
-                    effect.onExpire(context);
+                    effect.onExpire(context); // onExpire might log its own message
                     this.attachedEffects.splice(i, 1);
-                    console.log(`Effect ${effect.name} (ID: ${effect.id}) expired from ${this.name} via tickDuration.`);
-                    continue; 
+                    const expireMsg = `Effect ${effect.name || effect.type} on ${this.name} expired.`;
+                    console.log(`Effect ${effect.name || effect.type} (ID: ${effect.id}) expired from ${this.name} via tickDuration.`);
+                    if (this.battleSceneContext) this.battleSceneContext.addBattleLogMessage(expireMsg);
+                    continue;
                 }
             }
 
             if (effect.isActive && typeof effect.onTick === 'function') { 
                 if (effect.onTick(context)) { 
-                    effect.onExpire(context); 
+                    effect.onExpire(context); // onExpire might log its own message
                     this.attachedEffects.splice(i, 1);
-                    console.log(`Effect ${effect.name} (ID: ${effect.id}) processed and removed from ${this.name} during onTick.`);
-                     continue; 
+                    const onTickRemoveMsg = `Effect ${effect.name || effect.type} on ${this.name} ended after ticking.`;
+                    console.log(`Effect ${effect.name || effect.type} (ID: ${effect.id}) processed and removed from ${this.name} during onTick.`);
+                    if (this.battleSceneContext) this.battleSceneContext.addBattleLogMessage(onTickRemoveMsg);
+                     continue;
                 }
             }
             
@@ -426,8 +456,12 @@ export class BattleCharacter extends BaseCharacter {
 
     modifyStat(statName, amount, isTemporary = false) { 
         if (this.hasOwnProperty(statName)) {
+            const oldValue = this[statName];
             this[statName] += amount;
-            console.log(`${this.name}'s ${statName} modified by ${amount}. New value: ${this[statName]}`);
+            const statChangeMsg = `${this.name}'s ${statName} ${amount > 0 ? 'increased' : 'decreased'} by ${Math.abs(amount)} (from ${oldValue} to ${this[statName]}).`;
+            console.log(`${this.name}'s ${statName} modified by ${amount}. New value: ${this[statName]}`); // Dev log
+            if (this.battleSceneContext) this.battleSceneContext.addBattleLogMessage(statChangeMsg);
+
             if (statName === 'maxHp') {
                 this.currentHp = Math.min(this.currentHp, this.maxHp);
                 if (amount > 0) this.currentHp += amount; 
@@ -450,9 +484,11 @@ export class BattleCharacter extends BaseCharacter {
         for (let i = this.attachedEffects.length - 1; i >= 0; i--) {
             const effect = this.attachedEffects[i];
             if (typesArray.includes(effect.type)) {
-                effect.onExpire(context); 
+                effect.onExpire(context); // onExpire might log its own message
                 this.attachedEffects.splice(i, 1);
-                console.log(`Effect ${effect.type} (ID: ${effect.id}) dispelled from ${this.name}.`);
+                const dispelMsg = `Effect ${effect.name || effect.type} on ${this.name} was dispelled.`;
+                console.log(`Effect ${effect.name || effect.type} (ID: ${effect.id}) dispelled from ${this.name}.`);
+                if (this.battleSceneContext) this.battleSceneContext.addBattleLogMessage(dispelMsg);
             }
         }
     }

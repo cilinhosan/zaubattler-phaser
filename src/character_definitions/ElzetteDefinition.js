@@ -27,8 +27,9 @@ class HeartOfLightEffect extends AttachedEffect {
             // For more complex stat mods, BattleCharacter might need a robust stat modification system
             // that AttachedEffects can interact with (e.g., addModifier, removeModifier).
             // For now, we directly change currentAtk. This is a permanent change for the battle.
-            this.owner.currentAtk += this.attackBonus;
-            console.log(`${this.owner.name}'s Heart of Light boosted ATK by ${this.attackBonus}. New ATK: ${this.owner.currentAtk}`);
+            // The BattleCharacter.modifyStat method will handle logging this to the battle log.
+            this.owner.modifyStat('currentAtk', this.attackBonus);
+            // console.log(`${this.owner.name}'s Heart of Light boosted ATK by ${this.attackBonus}. New ATK: ${this.owner.currentAtk}`); // Dev Log
             this.applied = true;
 
             // If this passive could also affect maxHp or other base-like stats,
@@ -41,8 +42,11 @@ class HeartOfLightEffect extends AttachedEffect {
         super.onExpire(context);
         // If the effect were temporary, revert the stat change here.
         // Since it's a permanent passive for the battle, no revert needed unless explicitly dispelled.
-        // If it was dispellable, you'd do: this.owner.currentAtk -= this.attackBonus;
-        console.log(`Heart of Light effect removed from ${this.owner.name} (if it were dispellable).`);
+        // If it was dispellable, you'd do: this.owner.modifyStat('currentAtk', -this.attackBonus);
+        // console.log(`Heart of Light effect removed from ${this.owner.name} (if it were dispellable).`); // Dev Log
+        if (context && context.scene && context.scene.addBattleLogMessage && this.applied) { // Check if applied to avoid log on initial setup if not truly removed
+            // context.scene.addBattleLogMessage(`${this.name} on ${this.owner.name} has worn off.`); // Generic, or more specific if needed
+        }
     }
 }
 
@@ -82,7 +86,9 @@ export class ElzetteDefinition extends CharacterDefinition {
 
         const livingTargets = targets.filter(t => t && !t.isDefeatedStatus());
         if (livingTargets.length === 0) {
-            console.log(`${caster.getName()} used Light Blast, but no targets were available.`);
+            const noTargetsMsg = `${caster.getName()} used Light Blast, but no targets were available.`;
+            // console.log(noTargetsMsg); // Dev Log
+            if (battleScene && battleScene.addBattleLogMessage) battleScene.addBattleLogMessage(noTargetsMsg);
             return subActions;
         }
 
@@ -91,11 +97,17 @@ export class ElzetteDefinition extends CharacterDefinition {
 
         const lightBlastAction = () => {
             if (target.isDefeatedStatus() || (battleScene && battleScene.isBattleOver)) {
-                console.log(`Light Blast: Target ${target.getName()} defeated or battle over.`);
+                // console.log(`Light Blast: Target ${target.getName()} defeated or battle over.`); // Dev Log
+                // No player log needed here, as the action doesn't proceed.
                 return;
             }
             const damageOutput = Math.floor(caster.currentAtk * 2.0);
-            console.log(`${caster.getName()} uses Light Blast on ${target.getName()}!`);
+            // BattleScene logs "Caster prepares Skill Name".
+            // SkillHelper.dealDamage -> target.takeDamage logs the actual damage.
+            // console.log(`${caster.getName()} uses Light Blast on ${target.getName()}!`); // Dev Log
+            if (battleScene && battleScene.addBattleLogMessage) {
+                battleScene.addBattleLogMessage(`${caster.getName()} unleashes Light Blast on ${target.getName()}!`);
+            }
             SkillHelper.dealDamage(caster, target, damageOutput, FACTION.LIGHT, { skillId: skillId }, battleScene);
         };
 
@@ -117,14 +129,19 @@ export class ElzetteDefinition extends CharacterDefinition {
             // Check if there are any living targets before proceeding
             const currentLivingTargets = targets.filter(t => t && !t.isDefeatedStatus());
             if (currentLivingTargets.length === 0 || (battleScene && battleScene.isBattleOver)) {
-                console.log(`${caster.getName()} uses Radiant Area, but no targets remain or battle over.`);
+                const noTargetsMsg = `${caster.getName()} uses Radiant Area, but no targets remain or battle over.`;
+                // console.log(noTargetsMsg); // Dev Log
+                if (battleScene && battleScene.addBattleLogMessage) battleScene.addBattleLogMessage(noTargetsMsg);
                 return;
             }
             
             const damageOutput = Math.floor(caster.currentAtk * 1.5);
-            console.log(`${caster.getName()} uses Radiant Area!`);
-            // SkillHelper.dealDamageToAll expects the full team array, it filters internally.
-            // However, it's good practice to pass the currently living targets if easily available.
+            // BattleScene logs "Caster prepares Skill Name".
+            // SkillHelper.dealDamageToAll -> dealDamage -> target.takeDamage logs individual damages.
+            // console.log(`${caster.getName()} uses Radiant Area!`); // Dev Log
+            if (battleScene && battleScene.addBattleLogMessage) {
+                battleScene.addBattleLogMessage(`${caster.getName()} bathes the area in radiant light!`);
+            }
             SkillHelper.dealDamageToAll(caster, currentLivingTargets, damageOutput, FACTION.LIGHT, { skillId: skillId }, battleScene);
         };
         
@@ -135,9 +152,13 @@ export class ElzetteDefinition extends CharacterDefinition {
     skillHeartOfLight(caster, targetTeam, ownTeam, casterContext) {
         // Passive skills are called by BattleCharacter.applyInitialPassiveEffects
         // They should now add an AttachedEffect to the caster.
-        console.log(`${caster.getName()}'s Heart of Light passive is being initialized.`);
+        // The application of the effect and its stat modification will be logged by BattleCharacter.
+        // console.log(`${caster.getName()}'s Heart of Light passive is being initialized.`); // Dev Log
+        // if (casterContext && casterContext.scene && casterContext.scene.addBattleLogMessage) {
+        //     casterContext.scene.addBattleLogMessage(`${caster.getName()}'s Heart of Light activates!`);
+        // }
 
-        const attackBonus = this.stats.atk * 0.2; // Define the bonus here or get from metadata
+        const attackBonus = Math.floor(this.stats.atk * 0.2); // Ensure integer for stat modification
 
         const effect = new HeartOfLightEffect({
             owner: caster,

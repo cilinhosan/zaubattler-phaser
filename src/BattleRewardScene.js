@@ -82,23 +82,32 @@ export default class BattleRewardScene extends Phaser.Scene {
             // Recruit Button Text (Interactive)
             const recruitText = this.add.text(displayCenterX, buttonY, 'Recruit', { fontSize: '27px', fill: '#ffffff' }) // Increased size
                 .setOrigin(0.5)
-                .setInteractive();
+                // .setInteractive(); // Text is no longer directly interactive
 
             // Recruit Button Outline - redraw after text potentially changes size
             const recruitButtonOutline = this.add.graphics();
             const textBounds = recruitText.getBounds(); // Get bounds of the now larger text
+            const buttonPadding = { x: 15, y: 8 };
+            const buttonRect = new Phaser.Geom.Rectangle(
+                textBounds.x - buttonPadding.x,
+                textBounds.y - buttonPadding.y,
+                textBounds.width + 2 * buttonPadding.x,
+                textBounds.height + 2 * buttonPadding.y
+            );
+
             recruitButtonOutline.lineStyle(2, 0xffffff, 1);
-            // Adjust padding if necessary for larger text
-            recruitButtonOutline.strokeRect(textBounds.x - 15, textBounds.y - 8, textBounds.width + 30, textBounds.height + 16);
+            recruitButtonOutline.strokeRect(buttonRect.x, buttonRect.y, buttonRect.width, buttonRect.height);
+            recruitButtonOutline.setInteractive(buttonRect, Phaser.Geom.Rectangle.Contains);
+
 
             // Store references
             const rewardItem = {
                 character: character,
                 display: characterDisplay,
                 costText: costText,
-                recruitButton: recruitText, // Store the text as the interactive element
-                recruitButtonOutline: recruitButtonOutline, // Store the outline
-                recruitText: recruitText // Keep reference to text itself
+                recruitButton: recruitButtonOutline, // Store the outline as the interactive element
+                recruitButtonOutline: recruitButtonOutline,
+                recruitText: recruitText
             };
             this.rewardDisplays.push(rewardItem);
 
@@ -106,10 +115,12 @@ export default class BattleRewardScene extends Phaser.Scene {
             // --- Recruit Button Hover Effects ---
             let recruitHoverTween = null; // Variable to hold the tween
 
-            recruitText.on('pointerover', () => {
-                if (recruitText.input.enabled) { // Only tween if interactive
+            recruitButtonOutline.on('pointerover', () => {
+                // Check if the recruitButtonOutline (the interactive element) is enabled
+                if (recruitButtonOutline.input && recruitButtonOutline.input.enabled) {
                     recruitText.setFill('#00ff00'); // Green text
                     // Start flashing tween
+                    if (recruitHoverTween) recruitHoverTween.stop(); // Stop previous tween if any
                     recruitHoverTween = this.tweens.add({
                         targets: recruitText,
                         alpha: { from: 1, to: 0.5 },
@@ -121,20 +132,22 @@ export default class BattleRewardScene extends Phaser.Scene {
                 }
             });
 
-            recruitText.on('pointerout', () => {
-                if (recruitText.input.enabled) {
-                    recruitText.setFill('#ffffff'); // Back to white
-                    // Stop the tween and reset alpha
-                    if (recruitHoverTween) {
-                        recruitHoverTween.stop();
-                        recruitHoverTween = null;
-                    }
-                    recruitText.setAlpha(1);
+            recruitButtonOutline.on('pointerout', () => {
+                // Check if the recruitButtonOutline (the interactive element) is enabled
+                // (or was enabled, as pointerout might fire even if disabled during hover)
+                // For simplicity, we can allow the color/alpha reset even if it became disabled.
+                // The critical part is that 'pointerover' won't start a new tween if disabled.
+                recruitText.setFill('#ffffff'); // Back to white
+                // Stop the tween and reset alpha
+                if (recruitHoverTween) {
+                    recruitHoverTween.stop();
+                    recruitHoverTween = null;
                 }
+                recruitText.setAlpha(1);
             });
 
             // --- Add Recruitment Logic ---
-            recruitText.on('pointerdown', () => { // Use recruitText for pointerdown
+            recruitButtonOutline.on('pointerdown', () => { // Use recruitButtonOutline for pointerdown
                 // Check if already recruited in this scene instance
                 if (this.recruitedInThisScene.has(character.id)) {
                     console.log(`Character ${character.name} already recruited in this scene.`);
@@ -154,12 +167,20 @@ export default class BattleRewardScene extends Phaser.Scene {
 
                         // Disable button and update appearance
                         // Disable button and update appearance
-                        recruitText.disableInteractive(); // Disable the text
+                        recruitButtonOutline.disableInteractive(); // Disable the outline
                         recruitText.setFill('#888888'); // Grey out text
                         // Update text and redraw outline for "Recruited" state
                         recruitText.setText('Recruited');
-                        const newTextBounds = recruitText.getBounds(); // Get bounds of "Recruited"
-                        recruitButtonOutline.clear().lineStyle(2, 0x888888, 1).strokeRect(newTextBounds.x - 15, newTextBounds.y - 8, newTextBounds.width + 30, newTextBounds.height + 16); // Grey outline
+                        // Recalculate bounds for the new text "Recruited"
+                        const newTextBounds = recruitText.getBounds();
+                        const newButtonRect = new Phaser.Geom.Rectangle(
+                            newTextBounds.x - buttonPadding.x,
+                            newTextBounds.y - buttonPadding.y,
+                            newTextBounds.width + 2 * buttonPadding.x,
+                            newTextBounds.height + 2 * buttonPadding.y
+                        );
+                        recruitButtonOutline.clear().lineStyle(2, 0x888888, 1).strokeRect(newButtonRect.x, newButtonRect.y, newButtonRect.width, newButtonRect.height); // Grey outline
+
                         // Stop hover effect if it was active
                         if (recruitHoverTween) {
                             recruitHoverTween.stop();
@@ -187,25 +208,49 @@ export default class BattleRewardScene extends Phaser.Scene {
         // Next Battle Button Text (Interactive)
         const nextButtonText = this.add.text(screenWidth - 150, screenHeight - 70, 'Next Battle', { fontSize: '36px', fill: '#ffffff' }) // Increased size, adjusted X and Y
             .setOrigin(0.5)
-            .setInteractive();
+            // .setInteractive(); // Text is no longer directly interactive
 
         // Next Battle Button Outline
         const nextButtonOutline = this.add.graphics();
-        const nextBounds = nextButtonText.getBounds(); // Get bounds of the now larger text
+        const nextTextBounds = nextButtonText.getBounds(); // Get bounds of the now larger text
+        const nextButtonPadding = { x: 15, y: 8 };
+        const nextButtonRect = new Phaser.Geom.Rectangle(
+            nextTextBounds.x - nextButtonPadding.x,
+            nextTextBounds.y - nextButtonPadding.y,
+            nextTextBounds.width + 2 * nextButtonPadding.x,
+            nextTextBounds.height + 2 * nextButtonPadding.y
+        );
+
         nextButtonOutline.lineStyle(2, 0xffffff, 1); // White outline
-        // Adjust padding if necessary for larger text
-        nextButtonOutline.strokeRect(nextBounds.x - 15, nextBounds.y - 8, nextBounds.width + 30, nextBounds.height + 16);
+        nextButtonOutline.strokeRect(nextButtonRect.x, nextButtonRect.y, nextButtonRect.width, nextButtonRect.height);
+        nextButtonOutline.setInteractive(nextButtonRect, Phaser.Geom.Rectangle.Contains);
+
 
         // Next Battle Button Hover Effects
-        nextButtonText.on('pointerover', () => {
+        let nextButtonHoverTween = null;
+        nextButtonOutline.on('pointerover', () => {
             nextButtonText.setFill('#00ff00'); // Green on hover
+            // Start flashing tween
+            nextButtonHoverTween = this.tweens.add({
+                targets: nextButtonText,
+                alpha: { from: 1, to: 0.5 },
+                ease: 'Sine.easeInOut',
+                duration: 300,
+                repeat: -1, // Repeat indefinitely
+                yoyo: true
+            });
         });
-        nextButtonText.on('pointerout', () => {
+        nextButtonOutline.on('pointerout', () => {
             nextButtonText.setFill('#ffffff'); // Back to white
+            if (nextButtonHoverTween) {
+                nextButtonHoverTween.stop();
+                nextButtonHoverTween = null;
+            }
+            nextButtonText.setAlpha(1);
         });
 
         // Next Battle Button Action
-        nextButtonText.on('pointerdown', () => { // Use text for pointerdown
+        nextButtonOutline.on('pointerdown', () => { // Use outline for pointerdown
              console.log("Next Battle button clicked - transitioning...");
              // Clear the last battle result before transitioning
              GameDataManager.clearLastBattleResult();

@@ -53,15 +53,43 @@ class MenuInstructionScene extends Phaser.Scene { // Renamed class
         const backOutline = this.add.graphics();
         backOutline.lineStyle(4, 0xffffff, 1);
         const backBounds = backButton.getBounds();
-        backOutline.strokeRect(backBounds.x - 5, backBounds.y - 5, backBounds.width + 10, backBounds.height + 10);
+        const backButtonPadding = 5;
+        const backButtonHitArea = new Phaser.Geom.Rectangle(
+            backBounds.x - backButtonPadding,
+            backBounds.y - backButtonPadding,
+            backBounds.width + 2 * backButtonPadding,
+            backBounds.height + 2 * backButtonPadding
+        );
+        backOutline.strokeRect(backButtonHitArea.x, backButtonHitArea.y, backButtonHitArea.width, backButtonHitArea.height);
 
-        // Make Back button interactive
-        backButton.setInteractive();
-        backButton.on('pointerover', () => backButton.setFill('#00ff00')); // Green on hover
-        backButton.on('pointerout', () => backButton.setFill('#ffffff')); // White on hover out
+        // Make Back button interactive via its outline
+        // backButton.setInteractive(); // No longer directly interactive
+        backOutline.setInteractive(backButtonHitArea, Phaser.Geom.Rectangle.Contains);
+
+        let backButtonHoverTween = null;
+        backOutline.on('pointerover', () => {
+            backButton.setFill('#00ff00'); // Green on hover
+            if (backButtonHoverTween) backButtonHoverTween.stop();
+            backButtonHoverTween = this.tweens.add({
+                targets: backButton,
+                alpha: { from: 1, to: 0.5 },
+                ease: 'Sine.easeInOut',
+                duration: 300,
+                repeat: -1,
+                yoyo: true
+            });
+        });
+        backOutline.on('pointerout', () => {
+            backButton.setFill('#ffffff'); // White on hover out
+            if (backButtonHoverTween) {
+                backButtonHoverTween.stop();
+                backButtonHoverTween = null;
+            }
+            backButton.setAlpha(1);
+        });
 
         // Back Button click transitions
-        backButton.on('pointerdown', () => {
+        backOutline.on('pointerdown', () => { // Listener on outline
             console.log("MenuInstructionScene: Returning to MenuScreenScene..."); // Updated console log
             this.scene.start('MenuScreenScene');
         });

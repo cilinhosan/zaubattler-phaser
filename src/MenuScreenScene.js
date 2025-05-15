@@ -35,12 +35,40 @@ class MenuScreenScene extends Phaser.Scene {
         const startGameOutline = this.add.graphics();
         startGameOutline.lineStyle(4, 0xffffff, 1);
         const startGameBounds = startGameButton.getBounds();
-        startGameOutline.strokeRect(startGameBounds.x - 5, startGameBounds.y - 5, startGameBounds.width + 10, startGameBounds.height + 10);
+        const startGamePadding = 5;
+        const startGameHitArea = new Phaser.Geom.Rectangle(
+            startGameBounds.x - startGamePadding,
+            startGameBounds.y - startGamePadding,
+            startGameBounds.width + 2 * startGamePadding,
+            startGameBounds.height + 2 * startGamePadding
+        );
+        startGameOutline.strokeRect(startGameHitArea.x, startGameHitArea.y, startGameHitArea.width, startGameHitArea.height);
 
-        // Make Start Game button interactive
-        startGameButton.setInteractive();
-startGameButton.on('pointerover', () => startGameButton.setFill('#00ff00')); // Green on hover
-        startGameButton.on('pointerout', () => startGameButton.setFill('#ffffff')); // White on hover out
+        // Make Start Game button interactive via its outline
+        // startGameButton.setInteractive(); // No longer directly interactive
+        startGameOutline.setInteractive(startGameHitArea, Phaser.Geom.Rectangle.Contains);
+
+        let startGameHoverTween = null;
+        startGameOutline.on('pointerover', () => {
+            startGameButton.setFill('#00ff00'); // Green on hover
+            if (startGameHoverTween) startGameHoverTween.stop();
+            startGameHoverTween = this.tweens.add({
+                targets: startGameButton,
+                alpha: { from: 1, to: 0.5 },
+                ease: 'Sine.easeInOut',
+                duration: 300,
+                repeat: -1,
+                yoyo: true
+            });
+        });
+        startGameOutline.on('pointerout', () => {
+            startGameButton.setFill('#ffffff'); // White on hover out
+            if (startGameHoverTween) {
+                startGameHoverTween.stop();
+                startGameHoverTween = null;
+            }
+            startGameButton.setAlpha(1);
+        });
 
 // Add Instructions button
         const instructionsButton = this.add.text(this.cameras.main.width / 2, this.cameras.main.height / 2 + 50, "Instructions", { // Positioned below Start Game
@@ -53,12 +81,40 @@ startGameButton.on('pointerover', () => startGameButton.setFill('#00ff00')); // 
         const instructionsOutline = this.add.graphics();
         instructionsOutline.lineStyle(4, 0xffffff, 1);
         const instructionsBounds = instructionsButton.getBounds();
-        instructionsOutline.strokeRect(instructionsBounds.x - 5, instructionsBounds.y - 5, instructionsBounds.width + 10, instructionsBounds.height + 10);
+        const instructionsPadding = 5;
+        const instructionsHitArea = new Phaser.Geom.Rectangle(
+            instructionsBounds.x - instructionsPadding,
+            instructionsBounds.y - instructionsPadding,
+            instructionsBounds.width + 2 * instructionsPadding,
+            instructionsBounds.height + 2 * instructionsPadding
+        );
+        instructionsOutline.strokeRect(instructionsHitArea.x, instructionsHitArea.y, instructionsHitArea.width, instructionsHitArea.height);
 
-        // Make Instructions button interactive
-        instructionsButton.setInteractive();
-instructionsButton.on('pointerover', () => instructionsButton.setFill('#00ff00')); // Green on hover
-        instructionsButton.on('pointerout', () => instructionsButton.setFill('#ffffff')); // White on hover out
+        // Make Instructions button interactive via its outline
+        // instructionsButton.setInteractive(); // No longer directly interactive
+        instructionsOutline.setInteractive(instructionsHitArea, Phaser.Geom.Rectangle.Contains);
+
+        let instructionsHoverTween = null;
+        instructionsOutline.on('pointerover', () => {
+            instructionsButton.setFill('#00ff00'); // Green on hover
+            if (instructionsHoverTween) instructionsHoverTween.stop();
+            instructionsHoverTween = this.tweens.add({
+                targets: instructionsButton,
+                alpha: { from: 1, to: 0.5 },
+                ease: 'Sine.easeInOut',
+                duration: 300,
+                repeat: -1,
+                yoyo: true
+            });
+        });
+        instructionsOutline.on('pointerout', () => {
+            instructionsButton.setFill('#ffffff'); // White on hover out
+            if (instructionsHoverTween) {
+                instructionsHoverTween.stop();
+                instructionsHoverTween = null;
+            }
+            instructionsButton.setAlpha(1);
+        });
         // --- Create Starting Inventory and Team Immediately ---
         const playerInventory = [];
         // Get 2 random MenuCharacters for the player's starting team
@@ -97,13 +153,13 @@ instructionsButton.on('pointerover', () => instructionsButton.setFill('#00ff00')
         // --- End Immediate Setup ---
 
         // Start Game Button click transitions
-        startGameButton.on('pointerdown', () => {
+        startGameOutline.on('pointerdown', () => { // Listener on outline
             console.log("MenuScreenScene: Starting PreBattleSetupScene...");
             // Start PreBattleSetupScene without passing team/inventory data
             this.scene.start('PreBattleSetupScene', { /* battleIndex will default to 0 */ });
         });
 // Instructions Button click transitions
-        instructionsButton.on('pointerdown', () => {
+        instructionsOutline.on('pointerdown', () => { // Listener on outline
             console.log("MenuScreenScene: Starting MenuInstructionScene..."); // Updated log
             // Start MenuInstructionScene
             this.scene.start('MenuInstructionScene'); // Updated scene key

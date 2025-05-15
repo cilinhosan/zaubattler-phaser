@@ -36,22 +36,46 @@ class StartGameScene extends Phaser.Scene {
         const outline = this.add.graphics();
         outline.lineStyle(4, 0xffffff, 1);
         const textBounds = playText.getBounds();
-        outline.strokeRect(textBounds.x - 10, textBounds.y - 5, textBounds.width + 20, textBounds.height + 10); // Adjusted padding slightly
+        const playButtonPadding = { x: 10, y: 5 };
+        const playButtonHitArea = new Phaser.Geom.Rectangle(
+            textBounds.x - playButtonPadding.x,
+            textBounds.y - playButtonPadding.y,
+            textBounds.width + 2 * playButtonPadding.x,
+            textBounds.height + 2 * playButtonPadding.y
+        );
+        outline.strokeRect(playButtonHitArea.x, playButtonHitArea.y, playButtonHitArea.width, playButtonHitArea.height); // Adjusted padding slightly
 
-        // Make play text interactive
-        playText.setInteractive();
+        // Make play text interactive via its outline
+        // playText.setInteractive(); // No longer directly interactive
+        outline.setInteractive(playButtonHitArea, Phaser.Geom.Rectangle.Contains);
 
-        playText.on('pointerdown', () => {
+
+        outline.on('pointerdown', () => { // Listener on outline
             // Transition to the MenuScreenScene where game setup occurs
             this.scene.start('MenuScreenScene');
         });
 
-        playText.on('pointerover', () => {
+        let playButtonHoverTween = null;
+        outline.on('pointerover', () => { // Listener on outline
             playText.setFill('#00ff00'); // Green on hover
+            if (playButtonHoverTween) playButtonHoverTween.stop();
+            playButtonHoverTween = this.tweens.add({
+                targets: playText,
+                alpha: { from: 1, to: 0.5 },
+                ease: 'Sine.easeInOut',
+                duration: 300,
+                repeat: -1,
+                yoyo: true
+            });
         });
 
-        playText.on('pointerout', () => {
+        outline.on('pointerout', () => { // Listener on outline
             playText.setFill('#fff'); // Back to white
+            if (playButtonHoverTween) {
+                playButtonHoverTween.stop();
+                playButtonHoverTween = null;
+            }
+            playText.setAlpha(1);
         });
     }
 }

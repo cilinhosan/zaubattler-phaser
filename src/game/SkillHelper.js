@@ -19,13 +19,17 @@
  */
 export function dealDamage(caster, target, baseAmount, damageType = 'physical', options = {}, battleScene) {
     if (!caster || !target || target.isDefeatedStatus()) {
-        console.log(`${caster?.getName() || 'Unknown caster'} tries to attack, but the target ${target?.getName() || 'unknown'} is invalid or defeated.`);
+        const invalidTargetMsg = `${caster?.getName() || 'Unknown caster'} attempts to act, but target ${target?.getName() || 'unknown'} is invalid or defeated.`;
+        // console.log(invalidTargetMsg); // Dev log
+        if (battleScene && battleScene.addBattleLogMessage) {
+            battleScene.addBattleLogMessage(invalidTargetMsg);
+        }
         return;
     }
     if (!battleScene) {
         console.error("SkillHelper.dealDamage requires battleScene context!");
-        // Fallback or throw error, for now, we'll proceed with a warning
-        // but effects relying on scene context will fail.
+        // No player log here, this is a system error.
+        return; // Critical to stop if no scene context for logging.
     }
 
     const casterContext = caster.getEffectContext(); // Gets { scene, owner: caster }
@@ -71,10 +75,16 @@ export function dealDamage(caster, target, baseAmount, damageType = 'physical', 
  * @param {BattleScene} battleScene - The current BattleScene instance for context.
  */
 export function dealDamageToAll(caster, targetTeam, baseDamage, damageType = 'physical', options = {}, battleScene) {
-    console.log(`${caster.getName()} uses an AOE attack!`);
+    const skillName = options.skillId || 'an AOE attack'; // Use skillId if available for better logging
+    // BattleScene already logs "Caster prepares Skill Name".
+    // The specific damage to each target will be logged by target.takeDamage via dealDamage.
+    // console.log(`${caster.getName()} uses ${skillName}!`); // Dev log
+    // if (battleScene && battleScene.addBattleLogMessage) {
+    //     battleScene.addBattleLogMessage(`${caster.getName()} attacks multiple targets with ${skillName}!`);
+    // }
+
     targetTeam.forEach(target => {
         if (target && !target.isDefeatedStatus()) {
-            // Pass along options and battleScene context
             dealDamage(caster, target, baseDamage, damageType, options, battleScene);
         }
     });
@@ -89,13 +99,17 @@ export function dealDamageToAll(caster, targetTeam, baseDamage, damageType = 'ph
  */
 export function healTarget(caster, target, healAmount, battleScene) {
      if (!target || target.isDefeatedStatus()) {
-        console.log(`Healing failed: Target ${target?.getName() || 'unknown'} is invalid or defeated.`);
+        const failMsg = `Healing failed: Target ${target?.getName() || 'unknown'} is invalid or defeated.`;
+        // console.log(failMsg); // Dev log
+        if (battleScene && battleScene.addBattleLogMessage) {
+            battleScene.addBattleLogMessage(failMsg);
+        }
         return;
     }
-    // TODO: Implement onHealing and onHealReceived hooks if needed, similar to damage
-    // For now, directly call heal.
-    console.log(`${caster ? caster.getName() : 'Someone'} heals ${target.getName()} for ${healAmount}.`);
-    target.heal(healAmount, caster); // Pass caster to target.heal
+    // BattleCharacter.heal() will log the actual healing.
+    // BattleScene logs "Caster prepares Skill Name".
+    // console.log(`${caster ? caster.getName() : 'Someone'} heals ${target.getName()} for ${healAmount}.`); // Dev log
+    target.heal(healAmount, caster);
 }
 
 /**
@@ -106,7 +120,14 @@ export function healTarget(caster, target, healAmount, battleScene) {
  * @param {BattleScene} battleScene - The current BattleScene instance for context. (Optional for heal)
  */
 export function healAll(caster, targetTeam, healAmount, battleScene) {
-    console.log(`${caster.getName()} uses an AOE heal!`);
+    const skillName = caster.definition?.getSkillMetadataById(options?.skillId)?.name || "an AOE heal";
+    // BattleScene logs "Caster prepares Skill Name".
+    // healTarget -> target.heal() will log individual heals.
+    // console.log(`${caster.getName()} uses ${skillName}!`); // Dev log
+    // if (battleScene && battleScene.addBattleLogMessage) {
+    //    battleScene.addBattleLogMessage(`${caster.getName()} heals multiple targets with ${skillName}!`);
+    // }
+
     targetTeam.forEach(target => {
         if (target && !target.isDefeatedStatus()) {
             healTarget(caster, target, healAmount, battleScene);
@@ -123,20 +144,25 @@ export function healAll(caster, targetTeam, healAmount, battleScene) {
  */
 export function applyAttachedEffect(caster, target, effectInstance, battleScene) {
     if (!target || target.isDefeatedStatus()) {
-        console.log(`Cannot apply effect ${effectInstance?.type || 'unknown'} to ${target?.getName() || 'unknown'}: target invalid or defeated.`);
+        const cantApplyMsg = `Cannot apply effect ${effectInstance?.name || effectInstance?.type || 'unknown'} to ${target?.getName() || 'unknown'}: target invalid or defeated.`;
+        // console.log(cantApplyMsg); // Dev log
+        if (battleScene && battleScene.addBattleLogMessage) {
+            battleScene.addBattleLogMessage(cantApplyMsg);
+        }
         return;
     }
     if (!effectInstance) {
         console.error("SkillHelper.applyAttachedEffect: effectInstance is null or undefined.");
+        if (battleScene && battleScene.addBattleLogMessage) {
+            battleScene.addBattleLogMessage(`Failed to apply an effect from ${caster.getName()} to ${target.getName()}.`);
+        }
         return;
     }
-    // Ensure the effect's owner is correctly set to the target
-    // This might be redundant if effectInstance is always created with the target as owner,
-    // but good for safety if an effect could be "transferred" or applied by a non-owner.
-    effectInstance.owner = target;
+    effectInstance.owner = target; // Ensure owner is set before applying
 
+    // BattleCharacter.addAttachedEffect will log the application.
     target.addAttachedEffect(effectInstance);
-    // console.log(`${caster.getName()} applies effect ${effectInstance.type} to ${target.getName()}.`);
+    // console.log(`${caster.getName()} applies ${effectInstance.name || effectInstance.type} to ${target.getName()}.`); // Dev log
 }
 
 /**
@@ -148,12 +174,18 @@ export function applyAttachedEffect(caster, target, effectInstance, battleScene)
  */
 export function removeAttachedEffects(caster, target, typeOrTypesToRemove, battleScene) {
     if (!target) {
-        console.log(`Cannot remove effects: target is invalid.`);
+        const invalidTargetMsg = `Cannot remove effects: target is invalid.`;
+        // console.log(invalidTargetMsg); // Dev log
+        if (battleScene && battleScene.addBattleLogMessage) {
+            battleScene.addBattleLogMessage(invalidTargetMsg);
+        }
         return;
     }
     const targetContext = target.getEffectContext();
-    target.removeEffectsByType(typeOrTypesToRemove, targetContext); // BattleCharacter handles its own context now
-    // console.log(`${caster ? caster.getName() : 'Someone'} attempts to remove effects [${typeOrTypesToRemove}] from ${target.getName()}.`);
+    // BattleCharacter.removeEffectsByType will log the removal.
+    target.removeEffectsByType(typeOrTypesToRemove, targetContext);
+    // const typesStr = Array.isArray(typeOrTypesToRemove) ? typeOrTypesToRemove.join(', ') : typeOrTypesToRemove;
+    // console.log(`${caster ? caster.getName() : 'Someone'} attempts to remove ${typesStr} from ${target.getName()}.`); // Dev log
 }
 
 // TODO: Add functions for modifying stats directly (less common now, prefer effects)

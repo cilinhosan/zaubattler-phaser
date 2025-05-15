@@ -321,23 +321,47 @@ class PreBattleSetupScene extends Phaser.Scene {
 
         // --- Start Battle Button ---
         const startBattleButton = this.add.text(this.cameras.main.width / 2, this.cameras.main.height - 150, 'Start Battle', { fontSize: '64px', fill: '#ffffff' }) // Start white
-            .setOrigin(0.5)
-            .setInteractive();
+            .setOrigin(0.5);
+            // .setInteractive(); // Text is no longer directly interactive
 
         const buttonBounds = startBattleButton.getBounds();
         const buttonOutline = this.add.graphics();
+        const buttonPadding = 5;
+        const buttonHitArea = new Phaser.Geom.Rectangle(
+            buttonBounds.x - buttonPadding,
+            buttonBounds.y - buttonPadding,
+            buttonBounds.width + 2 * buttonPadding,
+            buttonBounds.height + 2 * buttonPadding
+        );
         buttonOutline.lineStyle(2, 0xffffff, 1);
-        buttonOutline.strokeRect(buttonBounds.x - 5, buttonBounds.y - 5, buttonBounds.width + 10, buttonBounds.height + 10);
+        buttonOutline.strokeRect(buttonHitArea.x, buttonHitArea.y, buttonHitArea.width, buttonHitArea.height);
+        buttonOutline.setInteractive(buttonHitArea, Phaser.Geom.Rectangle.Contains);
+
 
         // Add hover effects
-        startBattleButton.on('pointerover', () => {
+        let startBattleHoverTween = null;
+        buttonOutline.on('pointerover', () => {
             startBattleButton.setFill('#00ff00'); // Bright green on hover
+            if (startBattleHoverTween) startBattleHoverTween.stop();
+            startBattleHoverTween = this.tweens.add({
+                targets: startBattleButton,
+                alpha: { from: 1, to: 0.5 },
+                ease: 'Sine.easeInOut',
+                duration: 300,
+                repeat: -1,
+                yoyo: true
+            });
         });
-        startBattleButton.on('pointerout', () => {
+        buttonOutline.on('pointerout', () => {
             startBattleButton.setFill('#ffffff'); // Back to white
+            if (startBattleHoverTween) {
+                startBattleHoverTween.stop();
+                startBattleHoverTween = null;
+            }
+            startBattleButton.setAlpha(1);
         });
 
-        startBattleButton.on('pointerdown', () => {
+        buttonOutline.on('pointerdown', () => { // Listener on outline
             // --- Get Final Player Team Slot Data ---
             const finalTeamSlotData = this.playerTeamDisplays
                 .map(displayObject => displayObject ? displayObject.data : null);
@@ -562,9 +586,9 @@ class PreBattleSetupScene extends Phaser.Scene {
         const showMove = true; // Always show move option for now
         const buttonsToShow = [];
         if (showMove) {
-            buttonsToShow.push({ text: 'Move', color: '#0f0', action: 'move' });
+            buttonsToShow.push({ text: 'Move', color: '#FFFFFF', action: 'move' }); // Initial color white
         }
-        buttonsToShow.push({ text: 'Inspect', color: '#ff0', action: 'inspect' });
+        buttonsToShow.push({ text: 'Inspect', color: '#FFFFFF', action: 'inspect' }); // Initial color white
 
         const numberOfButtons = buttonsToShow.length;
         const popupWidth = 100; // Keep fixed width for now
@@ -621,6 +645,30 @@ class PreBattleSetupScene extends Phaser.Scene {
             const buttonText = this.add.text(popupWidth / 2, buttonY + buttonHeight / 2, buttonInfo.text, { fontSize: '18px', fill: buttonInfo.color })
                 .setOrigin(0.5, 0.5);
             this.actionPopup.add(buttonText);
+
+            let buttonHoverTween = null;
+
+            buttonBg.on('pointerover', () => {
+                buttonText.setFill('#00FF00'); // Green on hover
+                if (buttonHoverTween) buttonHoverTween.stop();
+                buttonHoverTween = this.tweens.add({
+                    targets: buttonText,
+                    alpha: { from: 1, to: 0.5 },
+                    ease: 'Sine.easeInOut',
+                    duration: 300,
+                    repeat: -1,
+                    yoyo: true
+                });
+            });
+
+            buttonBg.on('pointerout', () => {
+                buttonText.setFill('#FFFFFF'); // Revert to white
+                if (buttonHoverTween) {
+                    buttonHoverTween.stop();
+                    buttonHoverTween = null;
+                }
+                buttonText.setAlpha(1);
+            });
 
             // Add listener to the background rectangle
             buttonBg.on('pointerdown', (pointer, localX, localY, event) => {
