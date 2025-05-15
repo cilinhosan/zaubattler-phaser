@@ -88,7 +88,8 @@ export class CursedBoarDefinition extends CharacterDefinition { // Renamed class
         this.skillMetadata = {
             skillBloodthirstyTusks: { id: "cursed_boar_bloodthirsty_tusks", name: "Bloodthirsty Tusks", description: "Attacks a random target (130% ATK). If target isn't Bleeding, applies Bleed. If target is Bleeding, attacks again.", type: 'active', cooldown: 4, targetType: 'enemy' },
             skillBloodFrenzy: { id: "cursed_boar_blood_frenzy", name: "Blood Frenzy", description: "Passive: Deals double damage to enemies suffering from Bleed.", type: 'passive', applyImmediately: false }, // This passive's logic is implemented in skillCharge
-            skillProtectiveHerd: { id: "cursed_boar_protective_herd", name: "Protective Herd", description: "Passive: Defense increases by 25% for each other living ally.", type: 'passive', applyImmediately: true, modifiesStats: true }
+            skillProtectiveHerd: { id: "cursed_boar_protective_herd", name: "Protective Herd", description: "Passive: Defense increases by 25% for each other living ally.", type: 'passive', applyImmediately: true, modifiesStats: true },
+            skillSavageRush: { id: "cursed_boar_savage_rush", name: "Savage Rush", description: "Attacks a random living target (130% ATK). If the target is not Bleeding, applies Bleed and the skill ends. If the target is Bleeding, attacks it, then selects a new random living target not yet hit by this skill activation. This process repeats until a non-Bleeding target is hit or all living targets have been attacked once by this skill activation.", type: 'active', cooldown: 4, targetType: 'enemy' }
         };
     }
 
@@ -194,4 +195,99 @@ export class CursedBoarDefinition extends CharacterDefinition { // Renamed class
         // ownTeam is available in casterContext.ownTeam if BattleCharacter.getEffectContext() is set up correctly
         caster.addAttachedEffect(effect, casterContext);
     }
+skillSavageRush(caster, targets, ownTeam, casterContext) {
+        const subActions = [];
+        const skillId = this.skillMetadata.skillSavageRush.id;
+
+        if (!casterContext || !casterContext.scene) {
+            console.error("CursedBoarDefinition.skillSavageRush: BattleScene context not available!");
+            return subActions;
+        }
+
+        // Helper to create attack sub-action
+        const createAttackSubAction_SavageRush = (currentTarget, attackChainNumber) => {
+            return () => {
+                if (!casterContext.scene) {
+                    console.error(`Savage Rush Attack #${attackChainNumber} sub-action: casterContext.scene is undefined!`);
+                    return;
+                }
+                if (currentTarget.isDefeatedStatus() || casterContext.scene.isBattleOver) {
+                    console.log(`Savage Rush Attack #${attackChainNumber}: Target ${currentTarget.getName()} defeated or battle over.`);
+                    return;
+                }
+                let damage = Math.floor(caster.currentAtk * 1.3); // 130% ATK
+                console.log(`${caster.getName()}'s Savage Rush (Attack #${attackChainNumber}) dealing ${damage} to ${currentTarget.getName()}`);
+                SkillHelper.dealDamage(caster, currentTarget, damage, FACTION.NEUTRAL, { skillId }, casterContext.scene);
+            };
+        };
+
+        // Helper to create apply bleed sub-action
+        const createApplyBleedSubAction_SavageRush = (currentTarget) => {
+            return () => {
+                if (!casterContext.scene) {
+                    console.error("Savage Rush Apply Bleed sub-action: casterContext.scene is undefined!");
+                    return;
+                }
+                if (currentTarget.isDefeatedStatus() || casterContext.scene.isBattleOver) {
+                    console.log(`Savage Rush Apply Bleed: Target ${currentTarget.getName()} defeated or battle over.`);
+                    return;
+                }
+                // Check again if target is bleeding *just before applying*, in case another effect applied it.
+                const isTargetCurrentlyBleeding = currentTarget.attachedEffects.some(effect => effect.type === 'bleed' && effect.isActive);
+                if (!isTargetCurrentlyBleeding) {
+                    console.log(`Savage Rush applies Bleed to ${currentTarget.getName()}!`);
+                    const bleedEffect = new BleedEffect({ owner: currentTarget, sourceSkillId: skillId });
+                    currentTarget.addAttachedEffect(bleedEffect, casterContext);
+                } else {
+                    console.log(`${currentTarget.getName()} is already Bleeding. Savage Rush will not re-apply Bleed.`);
+                }
+            };
+        };
+
+        let initialLivingTargets = targets.filter(t => t && !t.isDefeatedStatus());
+        if (initialLivingTargets.length === 0) {
+            console.log(`${caster.getName()} used Savage Rush, but no targets were available.`);
+            return subActions;
+        }
+
+        console.log(`${caster.getName()} initiates Savage Rush!`);
+
+        const targetsHitThisActivation = new Set();
+        let attackChainCount = 0;
+
+        while (true) {
+            attackChainCount++;
+            // Determine available targets for this link in the chain
+            let potentialTargetsForThisHit = initialLivingTargets.filter(t => !targetsHitThisActivation.has(t) && !t.isDefeatedStatus());
+
+            if (potentialTargetsForThisHit.length === 0) {
+                console.log("Savage Rush: No more valid targets to continue the chain or all targets hit.");
+                break; // End chain if no valid, unhit targets remain
+            }
+
+            const currentTarget = potentialTargetsForThisHit[Math.floor(Math.random() * potentialTargetsForThisHit.length)];
+            targetsHitThisActivation.add(currentTarget);
+
+            console.log(`Savage Rush (Chain Link #${attackChainCount}): Targeting ${currentTarget.getName()}`);
+            subActions.push(createAttackSubAction_SavageRush(currentTarget, attackChainCount));
+
+            // Check bleeding status *of the chosen target* to decide chain continuation
+            // This check happens conceptually "after" targeting but "before" the next chain link decision
+            const isCurrentTargetBleeding = currentTarget.attachedEffects.some(effect => effect.type === 'bleed' && effect.isActive);
+
+            if (!isCurrentTargetBleeding) {
+                console.log(`${currentTarget.getName()} is not Bleeding. Savage Rush will apply Bleed and end the chain.`);
+                subActions.push(createApplyBleedSubAction_SavageRush(currentTarget));
+                break; // End chain
+            } else {
+                console.log(`${currentTarget.getName()} is Bleeding. Savage Rush chain continues...`);
+                // If all targets have been hit, the loop will break at the start of the next iteration.
+                if (targetsHitThisActivation.size >= initialLivingTargets.length) {
+                    console.log("Savage Rush: All living targets have been hit once. Chain ends.");
+                    break;
+                }
+            }
+        }
+        return subActions;
+    } // End of skillSavageRush
 }
