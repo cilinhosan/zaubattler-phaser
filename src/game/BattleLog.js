@@ -13,6 +13,7 @@ class BattleLog {
         this.textMask = null; // For masking the scrollable text
         this.buttonInteractiveSetupDone = false; // Flag for one-time setup
         this.initialSetupDone = false; // Flag for emitting 'battleLogReady' only once
+        this.isLogUiReady = false; // Roo: New flag to indicate if UI is ready for updates
 
         this.logHeightCollapsed = 40;
         this.logHeightExpanded = (this.scene.sys.game.config.height / 2);
@@ -118,7 +119,7 @@ class BattleLog {
                     pointer.x >= this.logContainerX && pointer.x <= this.logContainerX + this.logContainerWidth) {
                     
                     this.scrollPosition -= deltaY * 0.5; // Adjust scroll speed as needed
-                    this.updateDisplay(); // Redraw to apply scroll
+                    this.updateDisplay(); // Redraw to apply scroll // Roo: Added this method below
                 }
             }
         });
@@ -133,12 +134,25 @@ class BattleLog {
         if (this.messages.length > MAX_LOG_MESSAGES) {
             this.messages.shift();
         }
-        this._performUpdateDisplay(); // Direct call
+        // Roo: Only attempt to update display from addMessage if the UI is confirmed to be ready.
+        if (this.isLogUiReady) {
+            this._performUpdateDisplay();
+        }
     }
 
     toggleExpand() {
         this.isExpanded = !this.isExpanded;
-        this._performUpdateDisplay(); // Direct call
+        // Roo: Only attempt to update display from toggleExpand if the UI is confirmed to be ready.
+        if (this.isLogUiReady) {
+            this._performUpdateDisplay();
+        }
+    }
+
+    // Roo: Added method for scroll updates, guarded by UI readiness
+    updateDisplay() {
+        if (this.isLogUiReady) {
+            this._performUpdateDisplay();
+        }
     }
 
     // This is the private method that does the actual rendering.
@@ -227,6 +241,8 @@ class BattleLog {
             this.initialSetupDone = true;
             this.events.emit('battleLogReady');
             console.log("BattleLog: Emitted battleLogReady event."); // Roo: Added log
+            this.isLogUiReady = true; // Roo: UI is now confirmed to be ready
+            console.log("BattleLog: isLogUiReady set to true."); // Roo: Added log
         } else {
              // Roo: Added else block for logging. Commented out for now to reduce noise, can be enabled if needed.
             // console.log(`BattleLog: battleLogReady not emitted. initialSetupDone: ${this.initialSetupDone}, buttonInteractiveSetupDone: ${this.buttonInteractiveSetupDone}`);
