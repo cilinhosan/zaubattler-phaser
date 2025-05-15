@@ -73,41 +73,63 @@ export class ElzetteDefinition extends CharacterDefinition {
     // Note: The third argument `ownTeam` is still passed by BattleCharacter.determineAction,
     // and the fourth `casterContext` is new, providing {scene, owner}
     skillLightBlast(caster, targets, ownTeam, casterContext) {
-        // Active skills now receive the casterContext which contains the scene
-        const battleScene = casterContext.scene;
-        if (!battleScene) {
-            console.error("ElzetteDefinition.skillLightBlast: BattleScene context not available!");
-            return;
+        const subActions = [];
+        if (!casterContext || !casterContext.scene) {
+            console.error("ElzetteDefinition.skillLightBlast: BattleScene context not available in casterContext!");
+            return subActions;
         }
+        const battleScene = casterContext.scene; // For convenience
 
         const livingTargets = targets.filter(t => t && !t.isDefeatedStatus());
-        if (livingTargets.length > 0) {
-            // Skills should now select their own specific target(s) from the provided list
-            // For a single target skill, we might pick the first, or a random one.
-            // BattleScene's execute will pass the `currentTargetTeam` or `currentCasterTeam`
-            // based on `targetType` from metadata, but skills can refine this.
-            const target = livingTargets[Math.floor(Math.random() * livingTargets.length)]; // Example: random target
-            const damageOutput = Math.floor(caster.currentAtk * 2.0);
-            
-            console.log(`${caster.getName()} uses Light Blast on ${target.getName()}!`);
-            SkillHelper.dealDamage(caster, target, damageOutput, FACTION.LIGHT, { skillId: this.skillMetadata.skillLightBlast.id }, battleScene);
-        } else {
+        if (livingTargets.length === 0) {
             console.log(`${caster.getName()} used Light Blast, but no targets were available.`);
+            return subActions;
         }
+
+        const target = livingTargets[Math.floor(Math.random() * livingTargets.length)];
+        const skillId = this.skillMetadata.skillLightBlast.id;
+
+        const lightBlastAction = () => {
+            if (target.isDefeatedStatus() || (battleScene && battleScene.isBattleOver)) {
+                console.log(`Light Blast: Target ${target.getName()} defeated or battle over.`);
+                return;
+            }
+            const damageOutput = Math.floor(caster.currentAtk * 2.0);
+            console.log(`${caster.getName()} uses Light Blast on ${target.getName()}!`);
+            SkillHelper.dealDamage(caster, target, damageOutput, FACTION.LIGHT, { skillId: skillId }, battleScene);
+        };
+
+        subActions.push(lightBlastAction);
+        return subActions;
     }
 
     skillRadiantArea(caster, targets, ownTeam, casterContext) {
-        const battleScene = casterContext.scene;
-        if (!battleScene) {
-            console.error("ElzetteDefinition.skillRadiantArea: BattleScene context not available!");
-            return;
+        const subActions = [];
+        if (!casterContext || !casterContext.scene) {
+            console.error("ElzetteDefinition.skillRadiantArea: BattleScene context not available in casterContext!");
+            return subActions;
         }
-        const damageOutput = Math.floor(caster.currentAtk * 1.5);
+        const battleScene = casterContext.scene; // For convenience
+        // `targets` for an 'allEnemies' skill will be the enemy team array.
+        const skillId = this.skillMetadata.skillRadiantArea.id;
+
+        const radiantAreaAction = () => {
+            // Check if there are any living targets before proceeding
+            const currentLivingTargets = targets.filter(t => t && !t.isDefeatedStatus());
+            if (currentLivingTargets.length === 0 || (battleScene && battleScene.isBattleOver)) {
+                console.log(`${caster.getName()} uses Radiant Area, but no targets remain or battle over.`);
+                return;
+            }
+            
+            const damageOutput = Math.floor(caster.currentAtk * 1.5);
+            console.log(`${caster.getName()} uses Radiant Area!`);
+            // SkillHelper.dealDamageToAll expects the full team array, it filters internally.
+            // However, it's good practice to pass the currently living targets if easily available.
+            SkillHelper.dealDamageToAll(caster, currentLivingTargets, damageOutput, FACTION.LIGHT, { skillId: skillId }, battleScene);
+        };
         
-        // `targets` for an 'allEnemies' skill will be the enemy team.
-        // `SkillHelper.dealDamageToAll` will iterate through them.
-        console.log(`${caster.getName()} uses Radiant Area!`);
-        SkillHelper.dealDamageToAll(caster, targets, Math.floor(damageOutput), FACTION.LIGHT, { skillId: this.skillMetadata.skillRadiantArea.id }, battleScene);
+        subActions.push(radiantAreaAction);
+        return subActions;
     }
 
     skillHeartOfLight(caster, targetTeam, ownTeam, casterContext) {

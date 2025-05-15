@@ -236,27 +236,83 @@ class BattleScene extends Phaser.Scene {
                 }
 
                 if (validTargetsForActionExist) {
-                    console.log(`Executing action: ${chosenAction.name} for ${this.currentActiveCharacter.name}`);
-                    chosenAction.execute(this, currentActionTargetTeam, currentActionCasterTeam);
-                } else {
+                    // chosenAction.execute now returns an array of sub-action functions
+                    const subActions = chosenAction.execute(this, currentActionTargetTeam, currentActionCasterTeam);
+
+                    if (Array.isArray(subActions) && subActions.length > 0) {
+                        console.log(`Processing ${subActions.length} sub-actions for ${chosenAction.name} by ${this.currentActiveCharacter.name}`);
+                        // Call the new method to process the queue
+                        this.processSubActionQueue(subActions, this.currentActiveCharacter, () => {
+                            // This callback is executed after all sub-actions are done
+                            this.refreshActiveCharactersList(); // Refresh once after all sub-actions
+                            if (this.checkBattleEndConditions()) return;
+
+                            if (this.currentActiveCharacter && !this.currentActiveCharacter.isDefeatedStatus()) {
+                                // Call onActionPhaseEnd for the character
+                                this.currentActiveCharacter.onActionPhaseEnd(this.turnCounter);
+
+                                // Call afterAction hooks for the character's effects
+                                const casterContext = this.currentActiveCharacter.getEffectContext();
+                                for (const effect of this.currentActiveCharacter.attachedEffects) {
+                                    if (effect.isActive && typeof effect.afterAction === 'function') {
+                                        // Pass the original target team for the action, if needed by hooks
+                                        effect.afterAction(casterContext, this.currentActiveCharacter, currentActionTargetTeam);
+                                    }
+                                }
+                            }
+                             if (this.currentActiveCharacter && this.currentActiveCharacter.isDefeatedStatus()) {
+                                console.log(`${this.currentActiveCharacter.name} was defeated by effects at end of their action phase (after sub-actions).`);
+                            }
+                            this.advanceToActionPhase();
+                        });
+                    } else if (Array.isArray(subActions) && subActions.length === 0) {
+                        // Skill or action resulted in no sub-actions (e.g., Pass, or skill with no valid targets)
+                        console.log(`${chosenAction.name} by ${this.currentActiveCharacter.name} resulted in no sub-actions.`);
+                        this.refreshActiveCharactersList(); // Still refresh in case of state changes before sub-actions
+                         if (this.checkBattleEndConditions()) return;
+                        // Directly proceed to end of action phase for this character
+                        if (this.currentActiveCharacter && !this.currentActiveCharacter.isDefeatedStatus()) {
+                            this.currentActiveCharacter.onActionPhaseEnd(this.turnCounter);
+                             // afterAction hooks (though likely none for a "pass" type action)
+                            const casterContext = this.currentActiveCharacter.getEffectContext();
+                            for (const effect of this.currentActiveCharacter.attachedEffects) {
+                                if (effect.isActive && typeof effect.afterAction === 'function') {
+                                    effect.afterAction(casterContext, this.currentActiveCharacter, currentActionTargetTeam);
+                                }
+                            }
+                        }
+                        this.advanceToActionPhase();
+                    } else {
+                         console.error(`${this.currentActiveCharacter.name} action ${chosenAction.name} did not return a valid sub-action array.`);
+                         this.advanceToActionPhase(); // Failsafe
+                    }
+                } else { // No valid targets for the chosen action initially
                     console.log(`${this.currentActiveCharacter.name} determined action ${chosenAction.name}, but no valid targets remain.`);
+                    // Similar to empty sub-actions, end phase for this character
+                    this.refreshActiveCharactersList();
+                    if (this.checkBattleEndConditions()) return;
+                    if (this.currentActiveCharacter && !this.currentActiveCharacter.isDefeatedStatus()) {
+                        this.currentActiveCharacter.onActionPhaseEnd(this.turnCounter);
+                        // afterAction hooks
+                        const casterContext = this.currentActiveCharacter.getEffectContext();
+                        for (const effect of this.currentActiveCharacter.attachedEffects) {
+                            if (effect.isActive && typeof effect.afterAction === 'function') {
+                                effect.afterAction(casterContext, this.currentActiveCharacter, currentActionTargetTeam);
+                            }
+                        }
+                    }
+                    this.advanceToActionPhase();
                 }
-            } else {
+            } else { // No chosenAction or execute method
                 console.error(`${this.currentActiveCharacter.name} failed to determine a valid action or action has no execute method.`);
+                this.refreshActiveCharactersList();
+                if (this.checkBattleEndConditions()) return;
+                // End phase for this character
+                if (this.currentActiveCharacter && !this.currentActiveCharacter.isDefeatedStatus()) {
+                    this.currentActiveCharacter.onActionPhaseEnd(this.turnCounter);
+                }
+                this.advanceToActionPhase();
             }
-
-            this.refreshActiveCharactersList(); // Update list and visuals after action
-
-            if (this.currentActiveCharacter && !this.currentActiveCharacter.isDefeatedStatus()) {
-                this.currentActiveCharacter.onActionPhaseEnd(this.turnCounter);
-            }
-
-            if (this.currentActiveCharacter && this.currentActiveCharacter.isDefeatedStatus()) {
-                console.log(`${this.currentActiveCharacter.name} was defeated by effects at end of their action phase.`);
-                // refreshActiveCharactersList was already called
-            }
-
-            this.advanceToActionPhase();
         }, [], this);
     }
 
@@ -286,8 +342,72 @@ class BattleScene extends Phaser.Scene {
         // No need to call refreshActiveCharactersList here unless an action in advanceToActionPhase could cause defeat.
         // startTurn will handle refreshing the list at the beginning of a global turn cycle.
         this.time.delayedCall(800, this.startTurn, [], this);
-    }
-
+        }
+    
+        processSubActionQueue(subActionsArray, actingCharacter, onAllSubActionsCompleteCallback) {
+            const SUB_ACTION_DELAY = 600; // ms between sub-actions, adjust as needed
+    
+            if (this.isBattleOver) {
+                console.log("Battle ended during sub-action sequence. Halting further sub-actions.");
+                if (typeof onAllSubActionsCompleteCallback === 'function') {
+                    onAllSubActionsCompleteCallback();
+                }
+                return;
+            }
+    
+            if (!subActionsArray || subActionsArray.length === 0) {
+                // No more sub-actions, execute the final callback
+                if (typeof onAllSubActionsCompleteCallback === 'function') {
+                    onAllSubActionsCompleteCallback();
+                }
+                return;
+            }
+    
+            const subAction = subActionsArray.shift(); // Get the next sub-action
+    
+            this.time.delayedCall(SUB_ACTION_DELAY, () => {
+                if (this.isBattleOver) { // Check again before executing sub-action
+                    console.log("Battle ended just before executing a sub-action. Halting.");
+                     if (typeof onAllSubActionsCompleteCallback === 'function') {
+                        onAllSubActionsCompleteCallback();
+                    }
+                    return;
+                }
+                // It's important to check the acting character's status *before* executing their sub-action.
+                // If the character was defeated by a previous sub-action or a lingering effect triggered by it.
+                if (actingCharacter.isDefeatedStatus()) {
+                    console.log(`${actingCharacter.name} was defeated before a sub-action could execute. Skipping remaining sub-actions for this turn.`);
+                     if (typeof onAllSubActionsCompleteCallback === 'function') {
+                        onAllSubActionsCompleteCallback();
+                    }
+                    return;
+                }
+    
+                if (typeof subAction === 'function') {
+                    console.log(`Executing sub-action for ${actingCharacter.name}`);
+                    subAction(); // Execute the current sub-action
+                } else {
+                    console.error("Encountered an invalid item in subActionsArray. Expected a function.", subAction);
+                }
+    
+                this.refreshActiveCharactersList(); // Refresh list and visuals after each sub-action
+    
+                // Check battle end *after* refreshing the list, as the sub-action might have caused defeat.
+                if (this.checkBattleEndConditions()) {
+                    // Battle ended due to this sub-action. The endBattle sequence should handle everything.
+                    // The onAllSubActionsCompleteCallback might not be strictly necessary if endBattle cleans up,
+                    // but calling it ensures the original flow that leads to advanceToActionPhase is completed,
+                    // which itself checks isBattleOver.
+                    // However, if endBattle truly finalizes, further advancement is moot.
+                    // For now, let's assume checkBattleEndConditions, if true, means endBattle was called and took over.
+                    return;
+                }
+    
+                // Process the next sub-action in the queue
+                this.processSubActionQueue(subActionsArray, actingCharacter, onAllSubActionsCompleteCallback);
+    
+            }, [], this);
+        }
     checkBattleEndConditions() {
         const allPlayerDefeated = this.playerTeam.every(char => char.isDefeatedStatus());
         const allEnemyDefeated = this.enemyTeam.every(char => char.isDefeatedStatus());

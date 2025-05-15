@@ -64,36 +64,60 @@ export class KatherineDefinition extends CharacterDefinition {
     // --- Skill Methods ---
     // casterContext provides {scene, owner}
     skillFireBlast(caster, targets, ownTeam, casterContext) {
-        const battleScene = casterContext.scene;
-        if (!battleScene) {
-            console.error("KatherineDefinition.skillFireBlast: BattleScene context not available!");
-            return;
+        const subActions = [];
+        if (!casterContext || !casterContext.scene) {
+            console.error("KatherineDefinition.skillFireBlast: BattleScene context not available in casterContext!");
+            return subActions;
+        }
+        const battleScene = casterContext.scene; // For convenience
+
+        const livingTargets = targets.filter(t => t && !t.isDefeatedStatus());
+        if (livingTargets.length === 0) {
+            console.log(`${caster.getName()} used Fire Blast, but no targets were available.`);
+            return subActions;
         }
 
-        // The 'targets' array is the filtered list of living enemies provided by BattleScene/BattleCharacter
-        const livingTargets = targets.filter(t => t && !t.isDefeatedStatus()); // Double check, though should be pre-filtered
-        if (livingTargets.length > 0) {
-            const target = livingTargets[Math.floor(Math.random() * livingTargets.length)]; // Random single target
-            const damageOutput = Math.floor(caster.currentAtk * 3.0); // Example damage calculation
-            
+        const target = livingTargets[Math.floor(Math.random() * livingTargets.length)];
+        const skillId = this.skillMetadata.skillFireBlast.id;
+
+        const fireBlastAction = () => {
+            if (target.isDefeatedStatus() || (battleScene && battleScene.isBattleOver)) {
+                console.log(`Fire Blast: Target ${target.getName()} defeated or battle over.`);
+                return;
+            }
+            const damageOutput = Math.floor(caster.currentAtk * 3.0);
             console.log(`${caster.getName()} uses Fire Blast on ${target.getName()}!`);
-            SkillHelper.dealDamage(caster, target, damageOutput, FACTION.CRIMSON, { skillId: this.skillMetadata.skillFireBlast.id }, battleScene);
-        } else {
-            console.log(`${caster.getName()} used Fire Blast, but no targets were available.`);
-        }
+            SkillHelper.dealDamage(caster, target, damageOutput, FACTION.CRIMSON, { skillId: skillId }, battleScene);
+        };
+
+        subActions.push(fireBlastAction);
+        return subActions;
     }
 
     skillVolcanicArea(caster, targets, ownTeam, casterContext) {
-        const battleScene = casterContext.scene;
-        if (!battleScene) {
-            console.error("KatherineDefinition.skillVolcanicArea: BattleScene context not available!");
-            return;
+        const subActions = [];
+        if (!casterContext || !casterContext.scene) {
+            console.error("KatherineDefinition.skillVolcanicArea: BattleScene context not available in casterContext!");
+            return subActions;
         }
+        const battleScene = casterContext.scene; // For convenience
         
-        const damageOutput = Math.floor(caster.currentAtk * 1.2); // Example AOE damage calculation
-        console.log(`${caster.getName()} uses Volcanic Area!`);
-        // 'targets' for an 'allEnemies' skill will be the enemy team.
-        SkillHelper.dealDamageToAll(caster, targets, damageOutput, FACTION.CRIMSON, { skillId: this.skillMetadata.skillVolcanicArea.id }, battleScene);
+        const skillId = this.skillMetadata.skillVolcanicArea.id;
+
+        const volcanicAreaAction = () => {
+            const currentLivingTargets = targets.filter(t => t && !t.isDefeatedStatus());
+            if (currentLivingTargets.length === 0 || (battleScene && battleScene.isBattleOver)) {
+                console.log(`${caster.getName()} uses Volcanic Area, but no targets remain or battle over.`);
+                return;
+            }
+
+            const damageOutput = Math.floor(caster.currentAtk * 1.2);
+            console.log(`${caster.getName()} uses Volcanic Area!`);
+            SkillHelper.dealDamageToAll(caster, currentLivingTargets, damageOutput, FACTION.CRIMSON, { skillId: skillId }, battleScene);
+        };
+
+        subActions.push(volcanicAreaAction);
+        return subActions;
     }
 
     skillHeartOfFire(caster, targetTeam, ownTeam, casterContext) {

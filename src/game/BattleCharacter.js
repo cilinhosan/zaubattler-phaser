@@ -45,7 +45,26 @@ export class BattleCharacter extends BaseCharacter {
     }
 
     getEffectContext() {
-        return { scene: this.battleSceneContext, owner: this };
+        let ownTeam = null;
+        let enemyTeam = null;
+        if (this.battleSceneContext && typeof this.battleSceneContext.getTeam === 'function') {
+            // Assuming getTeam returns the array of BattleCharacter instances for that team
+            ownTeam = this.battleSceneContext.getTeam(this.team);
+            const enemyTeamName = this.team === 'player' ? 'enemy' : 'player'; // Simple toggle
+            enemyTeam = this.battleSceneContext.getTeam(enemyTeamName);
+        } else if (this.battleSceneContext) {
+            // Fallback if getTeam is not a function, try direct properties if they exist (less robust)
+            // console.warn("BattleCharacter.getEffectContext: battleSceneContext.getTeam is not a function. Trying direct properties.");
+            // ownTeam = this.team === 'player' ? this.battleSceneContext.playerTeam : this.battleSceneContext.enemyTeam;
+            // enemyTeam = this.team === 'player' ? this.battleSceneContext.enemyTeam : this.battleSceneContext.playerTeam;
+        }
+        
+        return {
+            scene: this.battleSceneContext,
+            owner: this,
+            ownTeam: ownTeam,
+            enemyTeam: enemyTeam
+        };
     }
 
     calculateStatsFromLevel() {
@@ -182,21 +201,44 @@ export class BattleCharacter extends BaseCharacter {
             name: "Basic Attack",
             caster: this,
             targetType: 'enemy',
-            execute: (battleScene, chosenTargets) => { 
-                const livingTargets = targetTeam.filter(t => t && !t.isDefeatedStatus());
-                if (livingTargets.length === 0) {
-                    console.log(`${this.name} tries Basic Attack, but no living targets.`);
-                    return;
-                }
-                const target = chosenTargets && chosenTargets.length > 0 ? chosenTargets[0] : livingTargets[Math.floor(Math.random() * livingTargets.length)];
-                console.log(`${this.name} uses Basic Attack on ${target.name}`);
+            execute: (battleScene, chosenTargets) => { // This outer 'execute' will now return an array of sub-actions
+                const subActions = [];
+                const basicAttackSubAction = () => { // This is the actual sub-action
+                    // Ensure battleScene is valid when this sub-action executes
+                    // It should be, as it's passed in from BattleScene's main loop.
+                    if (!battleScene) {
+                        console.error("Basic Attack sub-action: battleScene context is undefined!");
+                        return;
+                    }
 
-                let baseDamage = this.currentAtk;
-                const isCrit = Math.random() < this.critChance; 
-                if (isCrit) {
-                    baseDamage = Math.floor(baseDamage * this.critDamage);
-                }
-                SkillHelper.dealDamage(this, target, baseDamage, 'physical', { isCrit }, battleScene);
+                    const livingTargets = targetTeam.filter(t => t && !t.isDefeatedStatus());
+                    if (livingTargets.length === 0) {
+                        console.log(`${this.name} tries Basic Attack, but no living targets.`);
+                        return;
+                    }
+                    // Use chosenTargets if provided (e.g., by player input), otherwise random.
+                    // Note: chosenTargets here is the `currentActionTargetTeam` from BattleScene.
+                    // For a single-target basic attack, we'd typically pick one.
+                    const target = chosenTargets && chosenTargets.length > 0 && !chosenTargets[0].isDefeatedStatus()
+                                   ? chosenTargets[0]
+                                   : livingTargets[Math.floor(Math.random() * livingTargets.length)];
+                    
+                    if (!target || target.isDefeatedStatus()) { // Final check on the selected target
+                         console.log(`${this.name} tries Basic Attack, but the selected target ${target?.name || 'unknown'} is invalid or defeated.`);
+                         return;
+                    }
+
+                    console.log(`${this.name} uses Basic Attack on ${target.name}`);
+
+                    let baseDamage = this.currentAtk;
+                    const isCrit = Math.random() < this.critChance;
+                    if (isCrit) {
+                        baseDamage = Math.floor(baseDamage * this.critDamage);
+                    }
+                    SkillHelper.dealDamage(this, target, baseDamage, 'physical', { isCrit }, battleScene);
+                };
+                subActions.push(basicAttackSubAction);
+                return subActions;
             }
         };
     }
@@ -224,21 +266,32 @@ export class BattleCharacter extends BaseCharacter {
                             skillId: metadata.id || methodName, 
                             caster: this,
                             targetType: metadata.targetType || 'enemy',
-                            execute: (battleScene, chosenTargets) => { 
+                            execute: (battleScene, chosenTargetsFromScene) => { // This function now returns the array of sub-actions
+                                // --- beforeAction hooks ---
                                 for (const effect of this.attachedEffects) {
                                     if (effect.isActive && typeof effect.beforeAction === 'function') {
-                                        effect.beforeAction(context, this); 
+                                        effect.beforeAction(context, this);
                                     }
                                 }
-                                console.log(`${this.name} executes skill: ${metadata.name}`);
-                                this.definition[methodName](this, chosenTargets || livingTargetTeam, livingOwnTeam, context);
+                                
+                                // Skill cooldown is applied when the skill is CHOSEN, not after execution.
                                 this.skillCooldowns[methodName] = metadata.cooldown || 0;
+                                console.log(`${this.name} initiates skill: ${metadata.name} (Cooldown: ${this.skillCooldowns[methodName]})`);
 
-                                for (const effect of this.attachedEffects) {
-                                    if (effect.isActive && typeof effect.afterAction === 'function') {
-                                        effect.afterAction(context, this, chosenTargets || livingTargetTeam);
-                                    }
-                                }
+                                // The definition's skill method is called here.
+                                // It now returns an array of sub-action functions.
+                                // chosenTargetsFromScene is the relevant team (enemy or ally) passed by BattleScene
+                                const subActions = this.definition[methodName](
+                                    this, // caster
+                                    chosenTargetsFromScene || (metadata.targetType === 'enemy' || metadata.targetType === 'allEnemies' ? livingTargetTeam : livingOwnTeam), // targets for the skill
+                                    livingOwnTeam, // ownTeam for context
+                                    context        // casterContext {scene, owner, ownTeam, enemyTeam}
+                                );
+
+                                // --- afterAction hooks will be moved to BattleScene ---
+                                // They should be called after ALL sub-actions for this turn are complete.
+
+                                return subActions; // Return the array of sub-actions to BattleScene
                             }
                         };
                     }
@@ -253,7 +306,10 @@ export class BattleCharacter extends BaseCharacter {
 
         return {
             name: "Pass", caster: this, targetType: 'none',
-            execute: () => console.log(`${this.name} passes their turn.`)
+            execute: () => { // Pass action also returns an array of sub-actions (empty or a log action)
+                console.log(`${this.name} passes their turn.`);
+                return []; // Return an empty array of sub-actions
+            }
         };
     }
 

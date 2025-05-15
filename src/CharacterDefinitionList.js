@@ -3,10 +3,9 @@
 
 import { KatherineDefinition } from './character_definitions/KatherineDefinition.js';
 import { ElzetteDefinition } from './character_definitions/ElzetteDefinition.js';
-import { GoblinDefinition } from './character_definitions/GoblinDefinition.js';
-import { OrcDefinition } from './character_definitions/OrcDefinition.js';
-import { CursedWolfDefinition } from './character_definitions/CursedWolfDefinition.js'; // Updated import
+import { CursedWolfDefinition } from './character_definitions/CursedWolfDefinition.js';
 import { WerewolfDefinition } from './character_definitions/WerewolfDefinition.js';
+import { CursedBoarDefinition } from './character_definitions/CursedBoarDefinition.js'; // Added CursedBoar import
 
 // Re-export ELEMENTS from BaseDefinitions for convenience if needed elsewhere,
 // or components can import directly from BaseDefinitions.js
@@ -15,11 +14,10 @@ export { FACTION } from './character_definitions/BaseDefinitions.js';
 // Maps definition IDs to their corresponding classes
 export const characterDefinitionClasses = {
     "katherine": KatherineDefinition,
-    "goblin": GoblinDefinition,
-    "orc": OrcDefinition,
-    "cursedWolf": CursedWolfDefinition, // Updated ID and class
+    "cursedwolf": CursedWolfDefinition,
     "werewolf": WerewolfDefinition,
-    "elzette": ElzetteDefinition
+    "elzette": ElzetteDefinition,
+    "cursedboar": CursedBoarDefinition // Added CursedBoar mapping
     // Add other character definition classes here by importing them
     // "alina": AlinaDefinition,
     // ...etc

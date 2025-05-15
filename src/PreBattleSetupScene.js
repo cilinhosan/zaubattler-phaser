@@ -950,11 +950,13 @@ class PreBattleSetupScene extends Phaser.Scene {
         this.enemyTeamTitle = this.add.text(1450, 150, `Enemy Team`, { fontSize: '48px', fill: '#fff' }).setOrigin(0.5, 0); // Centered above enemy slots
         this.enemyDisplayGroup.add(this.enemyTeamTitle); // Add title to the group
 
+        const camWidth = this.cameras.main.width;
         const enemySlotPositions = [
-            { x: 1200, y: 250 },
-            { x: 1350, y: 250 },
-            { x: 1500, y: 250 },
-            // Add more slots if needed
+            { x: camWidth - 800, y: 250 }, // Slot 1 (Rightmost for enemy, mirrors player's leftmost)
+            { x: camWidth - 650, y: 250 }, // Slot 2
+            { x: camWidth - 500, y: 250 }, // Slot 3
+            { x: camWidth - 350, y: 250 }, // Slot 4
+            { x: camWidth - 200, y: 250 }  // Slot 5 (Leftmost for enemy, mirrors player's rightmost)
         ];
 
         this.currentEnemyTeam.forEach((character, index) => {
