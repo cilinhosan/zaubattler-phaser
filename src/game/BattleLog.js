@@ -124,6 +124,9 @@ class BattleLog {
             }
         });
 
+        // Roo: Listen for internal event to process new messages
+        this.events.on('newMessageInQueue', this.processMessageQueue, this);
+
         // The initial call to updateDisplay
         // will now be handled by BattleScene at the end of its create() method.
     }
@@ -134,7 +137,12 @@ class BattleLog {
         if (this.messages.length > MAX_LOG_MESSAGES) {
             this.messages.shift();
         }
-        // Roo: Only attempt to update display from addMessage if the UI is confirmed to be ready.
+        // Roo: Emit an event so BattleLog can decide when to process the queue.
+        this.events.emit('newMessageInQueue');
+    }
+
+    // Roo: New method to process queued messages
+    processMessageQueue() {
         if (this.isLogUiReady) {
             this._performUpdateDisplay();
         }
