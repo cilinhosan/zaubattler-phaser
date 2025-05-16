@@ -303,7 +303,7 @@ class BattleLog {
             }
             this.scrollPosition = 0; // Reset scroll position
 
-            textContent = this.messages.length > 0 ? this.messages[this.messages.length - 1] : "No new messages.";
+            textContent = this.messages.length > 0 ? this.messages[this.messages.length - 1] : "";
             this.logText.setWordWrapWidth(this.logContainerWidth - (this.padding * 2) - this.buttonWidth - this.padding);
             this.logText.setPosition(
                 this.logContainerX + this.padding,
