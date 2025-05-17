@@ -65,6 +65,14 @@ class AssetLoader {
         }
 
         console.warn(`[AssetLoader.getAssetPath] Source path '${sourcePath}' (normalized: '${normalizedSourcePath}') NOT found in manifest! Tried keys:`, possibleKeys);
+        if (this.manifest) {
+            console.log('[AssetLoader.getAssetPath] Sample of available manifest keys (up to 10):', Object.keys(this.manifest).slice(0, 10));
+            if (Object.keys(this.manifest).length === 0) {
+                console.warn('[AssetLoader.getAssetPath] The assetManifest appears to be empty.');
+            }
+        } else {
+            console.error('[AssetLoader.getAssetPath] this.manifest is null or undefined at the point of failure.');
+        }
         return null; // Return null explicitly if not found
     }
 

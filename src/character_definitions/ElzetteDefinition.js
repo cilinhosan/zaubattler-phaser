@@ -59,11 +59,13 @@ export class ElzetteDefinition extends CharacterDefinition {
             stats: { hp: 480, atk: 85, def: 35, critChance: 0.20, critDamage: 1.80 },
             faction: FACTION.LIGHT,
             playableByPlayer: true,
-            description: "A radiant warrior.",
+            description: "A radiant warrior of pure light.", // Forcing a visible change for cache busting
             faceIconKey: 'elzette_face_icon',
             faceIconPath: 'assets/elzette_illustration_face_icon.png',
             battleIconKey: 'elzette_battle_icon',
-            battleIconPath: 'assets/elzette_illustration_4_3.png'
+            battleIconPath: 'assets/elzette_illustration_4_3.png',
+            landscapeIllustrationKey: 'elzetteLandscapeIllustration', // Renamed to camelCase and updated key
+            landscapeIllustrationPath: 'assets/elzette_illustration_landscape.jpg' // Path remains the same
         });
 
         this.skillMetadata = {

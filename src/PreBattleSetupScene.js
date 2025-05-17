@@ -8,6 +8,7 @@ import setupLoadingIndicator from './LoadingIndicator.js'; // Import the utility
 import AssetLoader from './AssetLoader.js'; // Import the AssetLoader class
 import BattleRewardScene from './BattleRewardScene.js'; // Import the reward scene
 import menuBackground3 from '../assets/menu_background_illustration_3.jpg';
+import { CharacterProfileScene } from './CharacterProfileScene'; // Added import
 
 class PreBattleSetupScene extends Phaser.Scene {
     constructor() {
@@ -769,9 +770,16 @@ class PreBattleSetupScene extends Phaser.Scene {
 
     _handleInspectClick(characterData) {
         if (!characterData) return;
-        console.log('Inspect selected for:', characterData.name);
-        // TODO: Implement actual inspect functionality later
-        // REMOVED: this._hideActionPopup(); // Now handled by the button listener itself
+        console.log('PreBattleSetupScene: Inspect selected for:', characterData.name, '. Launching CharacterProfileScene.');
+
+        // Pass the character data and the key of the current scene
+        this.scene.sleep('PreBattleSetupScene'); // Sleep current scene
+        this.scene.launch('CharacterProfileScene', {
+            characterData: characterData,
+            previousSceneKey: 'PreBattleSetupScene'
+        });
+
+        this._hideActionPopup(); // Ensure popup is hidden after action
     }
 
     _handleTeamMemberClick(icon, pointer) {

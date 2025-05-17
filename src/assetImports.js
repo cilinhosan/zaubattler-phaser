@@ -8,6 +8,7 @@ console.log('[Asset Imports] Processing assets for Webpack...');
 // Default Player Icons
 import defaultFaceIcon from '../assets/default_character_ilustration_face_icon.png';
 import defaultBattleIcon from '../assets/default_character_ilustration_4_3.png';
+import defaultLandscapeIllustration from '../assets/default_character_illustration_landscape.jpg';
 
 // Default Enemy Icons (Note the two different defaults found)
 import defaultEnemyFaceIcon from '../assets/default_enemy_illustration_face_icon.png'; // Used by PreBattleSetupScene preload
@@ -16,6 +17,7 @@ import defaultEnemyBattleIcon from '../assets/default_enemy_illustration_4_3.png
 // Specific Character Icons (Add all specific character assets here)
 import elzetteFaceIcon from '../assets/elzette_illustration_face_icon.png';
 import elzetteBattleIcon from '../assets/elzette_illustration_4_3.png';
+import elzetteLandscapeIllustration from '../assets/elzette_illustration_landscape.jpg';
 
 // Add imports for other specific character assets if they exist (e.g., Katherine, Orc, etc.)
 // Example:
@@ -41,7 +43,9 @@ console.log('[Asset Imports] Imported paths (variables hold hashed paths at runt
     defaultEnemyFaceIcon,
     defaultEnemyBattleIcon,
     elzetteFaceIcon,
-    elzetteBattleIcon
+    elzetteBattleIcon,
+    defaultLandscapeIllustration,
+    elzetteLandscapeIllustration
 });
 
 // No need to export anything.
