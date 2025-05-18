@@ -143,6 +143,51 @@ class MenuScreenScene extends Phaser.Scene {
             }
             instructionsButton.setAlpha(1);
         });
+
+        // Add About button
+        const aboutButton = this.add.text(this.cameras.main.width / 2, this.cameras.main.height / 2 + 150, "About", { // Positioned below Instructions
+            fontSize: '64px',
+            fill: '#fff',
+            align: 'center'
+        }).setOrigin(0.5);
+
+        // Add outline rectangle for About button
+        const aboutOutline = this.add.graphics();
+        aboutOutline.lineStyle(4, 0xffffff, 1);
+        const aboutBounds = aboutButton.getBounds();
+        const aboutPadding = 5;
+        const aboutHitArea = new Phaser.Geom.Rectangle(
+            aboutBounds.x - aboutPadding,
+            aboutBounds.y - aboutPadding,
+            aboutBounds.width + 2 * aboutPadding,
+            aboutBounds.height + 2 * aboutPadding
+        );
+        aboutOutline.strokeRect(aboutHitArea.x, aboutHitArea.y, aboutHitArea.width, aboutHitArea.height);
+
+        // Make About button interactive via its outline
+        aboutOutline.setInteractive(aboutHitArea, Phaser.Geom.Rectangle.Contains);
+
+        let aboutHoverTween = null;
+        aboutOutline.on('pointerover', () => {
+            aboutButton.setFill('#00ff00'); // Green on hover
+            if (aboutHoverTween) aboutHoverTween.stop();
+            aboutHoverTween = this.tweens.add({
+                targets: aboutButton,
+                alpha: { from: 1, to: 0.5 },
+                ease: 'Sine.easeInOut',
+                duration: 300,
+                repeat: -1,
+                yoyo: true
+            });
+        });
+        aboutOutline.on('pointerout', () => {
+            aboutButton.setFill('#ffffff'); // White on hover out
+            if (aboutHoverTween) {
+                aboutHoverTween.stop();
+                aboutHoverTween = null;
+            }
+            aboutButton.setAlpha(1);
+        });
         // --- Create Starting Inventory and Team Immediately ---
         const playerInventory = [];
         // Get 2 random MenuCharacters for the player's starting team
@@ -164,12 +209,12 @@ class MenuScreenScene extends Phaser.Scene {
             if (char) playerInventory.push(char);
         });
 
-        const katherineDefinitionId = 'katherine'; // Assuming 'katherine' is the definition ID
-        for (let i = 0; i < 20; i++) {
-            // Create a new MenuCharacter instance for each Katherine
-            const katherineInstance = new MenuCharacter(katherineDefinitionId, 1); // Level 1
-            playerInventory.push(katherineInstance);
-        }
+        // const katherineDefinitionId = 'katherine'; // Assuming 'katherine' is the definition ID
+        // for (let i = 0; i < 20; i++) {
+        //     // Create a new MenuCharacter instance for each Katherine
+        //     const katherineInstance = new MenuCharacter(katherineDefinitionId, 1); // Level 1
+        //     playerInventory.push(katherineInstance);
+        // }
         console.log("Created starting inventory:", playerInventory);
         console.log("Created starting team:", initialTeam.filter(c => c !== null)); // Log only non-null team members
 
@@ -191,6 +236,12 @@ class MenuScreenScene extends Phaser.Scene {
             console.log("MenuScreenScene: Starting MenuInstructionScene..."); // Updated log
             // Start MenuInstructionScene
             this.scene.start('MenuInstructionScene'); // Updated scene key
+        });
+
+        // About Button click transitions
+        aboutOutline.on('pointerdown', () => { // Listener on outline
+            console.log("MenuScreenScene: Starting MenuAboutScene...");
+            this.scene.start('MenuAboutScene');
         });
 
         // --- Add Fullscreen Button ---
@@ -219,9 +270,27 @@ class MenuScreenScene extends Phaser.Scene {
             }
         });
 
-        // Optional: Add hover effect (tinting for images)
-        fullscreenButton.on('pointerover', () => fullscreenButton.setTint(0x00ff00)); // Green tint on hover
-        fullscreenButton.on('pointerout', () => fullscreenButton.clearTint()); // Remove tint on hover out
+        let fullscreenHoverTween = null;
+        fullscreenButton.on('pointerover', () => {
+            fullscreenButton.setTint(0x00ff00); // Green tint on hover
+            if (fullscreenHoverTween) fullscreenHoverTween.stop();
+            fullscreenHoverTween = this.tweens.add({
+                targets: fullscreenButton,
+                alpha: { from: 1, to: 0.5 },
+                ease: 'Sine.easeInOut',
+                duration: 300,
+                repeat: -1,
+                yoyo: true
+            });
+        });
+        fullscreenButton.on('pointerout', () => {
+            fullscreenButton.clearTint(); // Remove tint on hover out
+            if (fullscreenHoverTween) {
+                fullscreenHoverTween.stop();
+                fullscreenHoverTween = null;
+            }
+            fullscreenButton.setAlpha(1);
+        });
 
         // --- Add Audio Toggle Button ---
         // Position to the left of the fullscreen button
@@ -267,9 +336,27 @@ class MenuScreenScene extends Phaser.Scene {
             }
         });
 
-        // Optional: Add hover effect for audio toggle button
-        this.audioToggleButton.on('pointerover', () => this.audioToggleButton.setTint(0x00ff00));
-        this.audioToggleButton.on('pointerout', () => this.audioToggleButton.clearTint());
+        let audioHoverTween = null;
+        this.audioToggleButton.on('pointerover', () => {
+            this.audioToggleButton.setTint(0x00ff00);
+            if (audioHoverTween) audioHoverTween.stop();
+            audioHoverTween = this.tweens.add({
+                targets: this.audioToggleButton,
+                alpha: { from: 1, to: 0.5 },
+                ease: 'Sine.easeInOut',
+                duration: 300,
+                repeat: -1,
+                yoyo: true
+            });
+        });
+        this.audioToggleButton.on('pointerout', () => {
+            this.audioToggleButton.clearTint();
+            if (audioHoverTween) {
+                audioHoverTween.stop();
+                audioHoverTween = null;
+            }
+            this.audioToggleButton.setAlpha(1);
+        });
 
     }
 }

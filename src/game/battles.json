@@ -2,11 +2,7 @@
   {
     "battleId": 1,
     "enemies": [
-        { "type": "cursedWolf"},
-        { "type": "cursedWolf"},
-        { "type": "cursedWolf"},
-        { "type": "cursedBoar"},
-        { "type": "cursedBoar"}
+        { "type": "cursedWolf"}
     ]
   },
   {
@@ -23,6 +19,25 @@
         { "type": "cursedWolf"},
         { "type": "cursedWolf"},
         { "type": "cursedWolf"},
+        { "type": "cursedBoar"}
+    ]
+  },
+  {
+    "battleId": 4,
+    "enemies": [
+        { "type": "cursedWolf"},
+        { "type": "cursedWolf"},
+        { "type": "cursedWolf"},
+        { "type": "cursedBoar"},
+        { "type": "cursedBoar"}
+    ]
+  },
+  {
+    "battleId": 4,
+    "enemies": [
+        { "type": "cursedWolf"},
+        { "type": "cursedWolf"},
+        { "type": "cursedBoar"},
         { "type": "cursedBoar"},
         { "type": "cursedBoar"}
     ]

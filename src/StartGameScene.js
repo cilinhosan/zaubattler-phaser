@@ -45,6 +45,13 @@ class StartGameScene extends Phaser.Scene {
             align: 'center'
         }).setOrigin(0.5);
 
+        // Add "Prototype" text below "Zaubattler"
+        this.add.text(this.cameras.main.width / 2, this.cameras.main.height / 4 + 70, "(Prototype)", { // Adjusted Y position
+            fontSize: '48px', // Smaller font size
+            fill: '#fff',
+            align: 'center'
+        }).setOrigin(0.5);
+
         // Add play button text (Copied from MenuScreenScene)
         const playText = this.add.text(this.cameras.main.width / 2, this.cameras.main.height / 1.5, "Start Game", { // Changed text slightly
             fontSize: '64px',
