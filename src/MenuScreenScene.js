@@ -4,6 +4,8 @@ import { getRandomCharacters } from "./game/starterCharacterPool.js"; // Import 
 import GameDataManager from "./game/GameDataManager.js"; // Import the GameDataManager singleton
 import menuBackground1 from '../assets/menu_background_illustration_1.jpg';
 import fullscreenIcon from '../assets/fullscreen_icon.png'; // Import the fullscreen icon
+import audioOnIcon from '../assets/ui_icon_audio_on.png'; // Import the audio on icon
+import audioOffIcon from '../assets/ui_icon_audio_off.png'; // Import the audio off icon
 // AudioManager is not directly imported as it's expected to be in the registry
 // import AudioManager from "./game/AudioManager";
 
@@ -16,8 +18,8 @@ class MenuScreenScene extends Phaser.Scene {
         this.load.image('menuBg1', menuBackground1);
         // Load UI icons directly in this scene's preload
         this.load.image('fullscreenIcon', fullscreenIcon);
-        this.load.image('audio_on_icon', 'assets/ui_icon_audio_on.png'); // Use the direct path for clarity, key is 'audio_on_icon'
-        this.load.image('audio_off_icon', 'assets/ui_icon_audio_off.png'); // Use the direct path, key is 'audio_off_icon'
+        this.load.image('audio_on_icon', audioOnIcon); // Use imported variable
+        this.load.image('audio_off_icon', audioOffIcon); // Use imported variable
     }
 
     create() {

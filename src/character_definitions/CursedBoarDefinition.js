@@ -78,14 +78,14 @@ export class CursedBoarDefinition extends CharacterDefinition { // Renamed class
             faction: FACTION.NEUTRAL,
             playableByPlayer: false,
             description: "A ferocious, cursed boar.", // Updated description
-            faceIconKey: 'default_character_icon', // Consider updating if new assets are made
-            faceIconPath: 'assets/default_character_ilustration_face_icon.png',
-            battleIconKey: 'default_enemy_icon', // Consider updating if new assets are made
-            battleIconPath: 'assets/default_enemy_illustration_4_3.png',
-            // landscapeIllustrationKey: 'cursed_boar_landscape', // Using default from BaseDefinitions
-            // landscapeIllustrationPath: 'assets/default_character_illustration_landscape.jpg', // Using default
+            faceIconKey: 'cursed_boar_face_icon',
+            faceIconPath: 'assets/cursed_boar_illustration_face_icon.png',
+            battleIconKey: 'cursed_boar_battle_icon',
+            battleIconPath: 'assets/cursed_boar_illustration_4_3.png',
+            landscapeIllustrationKey: 'cursed_boar_landscape_illustration',
+            landscapeIllustrationPath: 'assets/cursed_boar_illustration_landscape.jpg',
             profileIllustrationKey: 'cursed_boar_profile_illustration',
-            profileIllustrationPath: 'assets/default_enemy_illustration_4_3.png'
+            profileIllustrationPath: 'assets/cursed_boar_illustration_profile.png'
         });
 
         // Update skill IDs and names for Cursed Boar

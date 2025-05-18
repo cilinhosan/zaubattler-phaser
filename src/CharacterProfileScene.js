@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import AssetLoader from './AssetLoader.js'; // Import AssetLoader
 import { getCharacterDefinition } from './CharacterDefinitionList.js'; // Corrected Import Path
+import setupLoadingIndicator from './LoadingIndicator.js'; // Import the utility function
 
 export class CharacterProfileScene extends Phaser.Scene {
     constructor() {
@@ -35,6 +36,12 @@ export class CharacterProfileScene extends Phaser.Scene {
 
     preload() {
         console.log('CharacterProfileScene preload. Character Data:', this.characterData);
+
+        // --- Setup Loading Indicator ---
+        // Use a specific title, or a default if characterData isn't ready (though it should be from init)
+        const loadingTitle = this.characterData?.name ? `Loading ${this.characterData.name}'s Profile...` : 'Loading Profile...';
+        setupLoadingIndicator(this, loadingTitle);
+
         const assetLoader = new AssetLoader(this);
 
 // Default icon keys
@@ -112,7 +119,7 @@ export class CharacterProfileScene extends Phaser.Scene {
         // Display Character Name
         if (charDef && charDef.name) {
             this.add.text(contentStartX, currentY, `Name: ${charDef.name}`, {
-                fontFamily: 'Arial', fontSize: '40px', color: '#FFFFFF', fontStyle: 'bold'
+                fontFamily: 'Arial, sans-serif', fontSize: '40px', color: '#FFFFFF', fontStyle: 'bold'
             }).setOrigin(0, 0);
             currentY += 50; // Adjusted for larger font
         }
@@ -120,36 +127,46 @@ export class CharacterProfileScene extends Phaser.Scene {
         // Display Character Stats
         if (charDef && charDef.stats) {
             this.add.text(contentStartX, currentY, 'Stats:', {
-                fontFamily: 'Arial', fontSize: '36px', color: '#FFFFFF', fontStyle: 'bold'
+                fontFamily: 'Arial, sans-serif', fontSize: '36px', color: '#FFFFFF', fontStyle: 'bold'
             }).setOrigin(0, 0);
             currentY += 45; // Adjusted
 
-            const statTextStyle = { fontFamily: 'Arial', fontSize: '32px', color: '#DDDDDD' };
+            const statTextStyle = { fontFamily: 'Arial, sans-serif', fontSize: '32px', color: '#DDDDDD' };
             for (const [statName, statValue] of Object.entries(charDef.stats)) {
                 let displayValue = statValue;
                 if (statName === 'critChance' || statName === 'critDamage') {
                     displayValue = `${(statValue * 100).toFixed(0)}%`;
                 }
-                this.add.text(contentStartX + 10, currentY, `${statName.charAt(0).toUpperCase() + statName.slice(1)}: ${displayValue}`, statTextStyle).setOrigin(0, 0);
+
+                let displayStatName;
+                if (statName === 'critChance') {
+                    displayStatName = 'CRIT';
+                } else if (statName === 'critDamage') {
+                    displayStatName = 'CRIT DMG';
+                } else {
+                    displayStatName = statName.toUpperCase();
+                }
+                
+                this.add.text(contentStartX + 10, currentY, `${displayStatName}: ${displayValue}`, statTextStyle).setOrigin(0, 0);
                 currentY += 40; // Adjusted
             }
             currentY += 20; // Extra padding after stats
         } else {
-            this.add.text(contentStartX, currentY, 'Stats not available.', { fontFamily: 'Arial', fontSize: '32px', color: '#FF8888' }).setOrigin(0, 0);
+            this.add.text(contentStartX, currentY, 'Stats not available.', { fontFamily: 'Arial, sans-serif', fontSize: '32px', color: '#FF8888' }).setOrigin(0, 0);
             currentY += 45; // Adjusted
         }
 
         // Display Skills and Passives
         if (charDef && charDef.skillMetadata) {
             this.add.text(contentStartX, currentY, 'Abilities:', {
-                fontFamily: 'Arial', fontSize: '36px', color: '#FFFFFF', fontStyle: 'bold'
+                fontFamily: 'Arial, sans-serif', fontSize: '36px', color: '#FFFFFF', fontStyle: 'bold'
             }).setOrigin(0, 0);
             currentY += 45; // Adjusted
 
             const buttonHeight = 60; // Increased height for larger font
             const buttonSpacing = 15; // Increased spacing
             // New text style: white text
-            const buttonTextStyle = { fontFamily: 'Arial', fontSize: '32px', color: '#FFFFFF', align: 'center'};
+            const buttonTextStyle = { fontFamily: 'Arial, sans-serif', fontSize: '32px', color: '#FFFFFF', align: 'center'};
             const buttonWidth = contentWidth - 20;
             const outlineThickness = 2; // Thickness for the button outline
 
@@ -229,7 +246,7 @@ export class CharacterProfileScene extends Phaser.Scene {
             }
 
         } else {
-             this.add.text(contentStartX, currentY, 'Skills not available.', { fontFamily: 'Arial', fontSize: '32px', color: '#FF8888' }).setOrigin(0, 0);
+             this.add.text(contentStartX, currentY, 'Skills not available.', { fontFamily: 'Arial, sans-serif', fontSize: '32px', color: '#FF8888' }).setOrigin(0, 0);
              currentY += 45;
              this.skillListEndY = currentY; // Also store if no skills
         }
@@ -263,7 +280,7 @@ export class CharacterProfileScene extends Phaser.Scene {
 
         // Back Button
         const backButton = this.add.text(40, headerHeight / 2, '← Back', {
-            fontFamily: 'Arial, sans-serif',
+            // fontFamily: 'Arial, sans-serif', // Removed to use default sans-serif
             fontSize: '40px', // Increased
             color: '#FFFFFF',
             fontStyle: 'bold'
@@ -304,7 +321,7 @@ export class CharacterProfileScene extends Phaser.Scene {
 
         // Title
         this.add.text(width / 2, headerHeight / 2, 'Character Profile', {
-            fontFamily: 'serif',
+            // fontFamily: 'serif', // Removed to use default sans-serif
             fontSize: '48px', // Increased
             color: '#FFFFFF',
             align: 'center'
@@ -317,8 +334,8 @@ export class CharacterProfileScene extends Phaser.Scene {
         this.closeSkillDescription(); // Close any existing description
 
         const padding = 15;
-        const titleStyle = { fontFamily: 'Arial', fontSize: '30px', color: '#FFFFFF', fontStyle: 'bold' };
-        const descStyle = { fontFamily: 'Arial', fontSize: '26px', color: '#E0E0E0', wordWrap: { width: maxWidth - (padding * 2) } };
+        const titleStyle = { fontFamily: 'Arial, sans-serif', fontSize: '30px', color: '#FFFFFF', fontStyle: 'bold' };
+        const descStyle = { fontFamily: 'Arial, sans-serif', fontSize: '26px', color: '#E0E0E0', wordWrap: { width: maxWidth - (padding * 2) } };
         
         // Position the container below the skill buttons list
         const containerY = this.skillListEndY + padding; // Add some padding below the list

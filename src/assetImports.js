@@ -20,10 +20,25 @@ import elzetteBattleIcon from '../assets/elzette_illustration_4_3.png';
 import elzetteLandscapeIllustration from '../assets/elzette_illustration_landscape.jpg';
 import elzetteProfileIllustration from '../assets/elzette_illustration_profile.png';
 
-// Add imports for other specific character assets if they exist (e.g., Katherine, Orc, etc.)
-// Example:
-// import katherineFaceIcon from '../assets/katherine_face.png';
-// import katherineBattleIcon from '../assets/katherine_battle.png';
+// Katherine Icons
+import katherineFaceIcon from '../assets/katherine_illustration_face_icon.png';
+import katherineBattleIcon from '../assets/katherine_illustration_4_3.png';
+import katherineLandscapeIllustration from '../assets/katherine_illustration_landscape.jpg';
+import katherineProfileIllustration from '../assets/katherine_illustration_profile.png';
+
+// Cursed Boar Icons
+import cursedBoarFaceIcon from '../assets/cursed_boar_illustration_face_icon.png';
+import cursedBoarBattleIcon from '../assets/cursed_boar_illustration_4_3.png';
+import cursedBoarLandscapeIllustration from '../assets/cursed_boar_illustration_landscape.jpg';
+import cursedBoarProfileIllustration from '../assets/cursed_boar_illustration_profile.png';
+
+// Cursed Wolf Icons
+import cursedWolfFaceIcon from '../assets/cursed_wolf_illustration_face_icon.png';
+import cursedWolfBattleIcon from '../assets/cursed_wolf_illustration_4_3.png';
+import cursedWolfLandscapeIllustration from '../assets/cursed_wolf_illustration_landscape.jpg'; // Using .jpg for landscape
+import cursedWolfProfileIllustration from '../assets/cursed_wolf_illustration_profile.png'; // Corrected profile import
+
+// Add imports for other specific character assets if they exist (e.g., Orc, etc.)
 
 // Menu Background Illustrations
 import menuBackground1 from '../assets/menu_background_illustration_1.jpg';
@@ -56,6 +71,18 @@ console.log('[Asset Imports] Imported paths (variables hold hashed paths at runt
     defaultLandscapeIllustration,
     elzetteLandscapeIllustration,
     elzetteProfileIllustration,
+    katherineFaceIcon,
+    katherineBattleIcon,
+    katherineLandscapeIllustration,
+    katherineProfileIllustration,
+    cursedBoarFaceIcon,
+    cursedBoarBattleIcon,
+    cursedBoarLandscapeIllustration,
+    cursedBoarProfileIllustration,
+    cursedWolfFaceIcon,
+    cursedWolfBattleIcon,
+    cursedWolfLandscapeIllustration,
+    cursedWolfProfileIllustration, // Added Cursed Wolf Profile to export list
     audioBattleTheme1,
     audioMenuTheme1,
     audioMenuTheme2,

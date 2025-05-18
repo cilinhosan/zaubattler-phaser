@@ -88,6 +88,39 @@ class PreBattleSetupScene extends Phaser.Scene {
             }
         });
 
+        // --- Preload Specific Enemy Icons for the Current Battle ---
+        const currentBattleIndex = GameDataManager.getCurrentBattleIndex();
+        // Assuming battlesData is the array of battles directly, not an object containing a 'battles' array.
+        const battle = (battlesData && currentBattleIndex < battlesData.length) ? battlesData[currentBattleIndex] : null;
+
+        if (battle && battle.enemies) {
+            battle.enemies.forEach(enemyConfig => { // enemyConfig is an object like { type: "cursedWolf", level: 1 }
+                if (!enemyConfig || !enemyConfig.type) {
+                    console.warn(`PreBattleSetupScene: Invalid enemy configuration in battle data:`, enemyConfig);
+                    return;
+                }
+                const enemyDefinitionId = enemyConfig.type.toLowerCase();
+                const definition = getCharacterDefinition(enemyDefinitionId);
+                if (definition) {
+                    if (definition.faceIconKey && definition.faceIconPath) {
+                        assetLoader.preloadAsset(definition.faceIconKey, definition.faceIconPath, 'image');
+                        console.log(`PreBattleSetupScene: Queued enemy face icon: ${definition.faceIconKey} for ${enemyDefinitionId}`);
+                    } else {
+                        console.warn(`PreBattleSetupScene: Enemy type '${enemyDefinitionId}' in current battle missing faceIconPath or faceIconKey.`);
+                    }
+                    // Optionally preload battleIconKey too if needed elsewhere for enemies in this scene
+                    // if (definition.battleIconKey && definition.battleIconPath) {
+                    //     assetLoader.preloadAsset(definition.battleIconKey, definition.battleIconPath, 'image');
+                    // }
+                } else {
+                    console.warn(`PreBattleSetupScene: Could not find definition for enemy type '${enemyDefinitionId}' in current battle while preloading assets.`);
+                }
+            });
+        } else {
+            console.warn(`PreBattleSetupScene: Could not find battle data for index ${currentBattleIndex} or battle has no enemies.`);
+        }
+
+
         console.log('PreBattleSetupScene: preload() finished queuing assets via Robust AssetLoader.');
     }
 
@@ -1083,10 +1116,11 @@ class PreBattleSetupScene extends Phaser.Scene {
         ];
 
         this.currentEnemyTeam.forEach((character, index) => {
-            if (index < enemySlotPositions.length && character) {
+            if (index < enemySlotPositions.length && character && character.definition) {
                 const pos = enemySlotPositions[index];
-                // Use enemy icon
-                const enemyIcon = this.add.image(pos.x, pos.y, 'enemy_icon');
+                // Use specific enemy face icon, fallback to generic 'enemy_icon'
+                const iconKeyToUse = character.definition.faceIconKey || 'enemy_icon';
+                const enemyIcon = this.add.image(pos.x, pos.y, iconKeyToUse);
                 enemyIcon.setDisplaySize(99, 99);
                 enemyIcon.setInteractive(); // Make enemy icon interactive
                 enemyIcon.setData('characterData', character); // Store the BattleCharacter instance

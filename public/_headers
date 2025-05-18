@@ -1,20 +1,21 @@
-# dist/_headers
-
-# Security Headers (Apply to all)
+# Security Headers (Apply to all paths)
 /*
   X-Content-Type-Options: nosniff
 
-# Default: Cache everything strongly (including root JS, CSS, etc.)
-/*
-  Cache-Control: public, max-age=31536000, immutable
-
-# Override: Files that should NOT be strongly cached (force revalidation)
+# Critical files that must not be cached aggressively by browsers or CDNs
 /index.html
   Cache-Control: no-cache, must-revalidate, max-age=0
+
 /asset-manifest.json
   Cache-Control: no-cache, must-revalidate, max-age=0
 
-# Note: /assets/* rule is now redundant because /* covers it, but doesn't hurt to leave
-# Hashed assets directory (strong caching - covered by /* above)
-# /assets/*
-#  Cache-Control: public, max-age=31536000, immutable
+# Hashed JavaScript bundles in the root directory
+# Webpack output: [name].[contenthash].bundle.js
+# This rule targets those files.
+/*.bundle.js
+  Cache-Control: public, max-age=31536000, immutable
+
+# Hashed static assets (images, audio, fonts, etc.) under /assets/
+# Webpack output: assets/[contenthash][ext][query]
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable

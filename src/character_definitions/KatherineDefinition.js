@@ -48,14 +48,14 @@ export class KatherineDefinition extends CharacterDefinition {
             faction: FACTION.CRIMSON,
             playableByPlayer: true,
             description: "A fiery warrior.",
-            faceIconKey: 'default_character_icon', // Reverted to original
-            faceIconPath: 'assets/default_character_ilustration_face_icon.png', // Reverted to original
-            battleIconKey: 'default_battle_icon', // Reverted to original
-            battleIconPath: 'assets/default_character_ilustration_4_3.png', // Reverted to original
-            // landscapeIllustrationKey: 'katherine_landscape', // Using default from BaseDefinitions
-            // landscapeIllustrationPath: 'assets/default_character_illustration_landscape.jpg', // Using default
+            faceIconKey: 'katherine_face_icon',
+            faceIconPath: 'assets/katherine_illustration_face_icon.png',
+            battleIconKey: 'katherine_battle_icon',
+            battleIconPath: 'assets/katherine_illustration_4_3.png',
+            landscapeIllustrationKey: 'katherine_landscape_illustration',
+            landscapeIllustrationPath: 'assets/katherine_illustration_landscape.jpg',
             profileIllustrationKey: 'katherine_profile_illustration',
-            profileIllustrationPath: 'assets/default_character_ilustration_4_3.png'
+            profileIllustrationPath: 'assets/katherine_illustration_profile.png'
         });
 
         this.skillMetadata = {
