@@ -141,7 +141,16 @@ class BattleScene extends Phaser.Scene {
 
         this.battleLog = new BattleLog(this); // Create an instance of BattleLog
 
-        this.setupBackgroundMusic();
+        // Setup and play battle music
+        this.audioManager = this.registry.get('audioManager');
+        if (this.audioManager) {
+            this.audioManager.scene = this; // Ensure current scene context
+            this.audioManager.playBattleMusic();
+            console.log('[BattleScene] Playing battle music.');
+        } else {
+            console.warn('[BattleScene] AudioManager not found in registry. Battle music will not play.');
+        }
+        // this.setupBackgroundMusic(); // Call to existing method removed as logic is now inline
 
         // Perform initial BattleLog display. It will emit 'battleLogReady' when done.
         if (this.battleLog && this.battleLog.events) {
@@ -208,10 +217,10 @@ class BattleScene extends Phaser.Scene {
         // console.log(message);
     }
 
-    setupBackgroundMusic() {
-        const musicKey = 'battle_music_loop';
-        // console.log(`BattleScene: Checking for background music ('${musicKey}')...`);
-    }
+    // setupBackgroundMusic() { // This method can be removed or repurposed if no other setup is needed.
+    //     // const musicKey = 'battle_music_loop'; // This was 'audio_battle_theme_1'
+    //     // console.log(`BattleScene: Checking for background music ('${musicKey}')...`);
+    // }
 
     startTurn() {
         if (this.isBattleOver) return;

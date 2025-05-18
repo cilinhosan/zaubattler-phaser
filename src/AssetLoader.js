@@ -133,7 +133,7 @@ class AssetLoader {
 
 
         if (!alreadyLoaded) {
-            // console.log(`[AssetLoader.preloadAsset] Queuing load: Key='${phaserKey}', Type='${assetType}', HashedPath='${hashedPath}'`);
+            console.log(`[AssetLoader.preloadAsset] Queuing load: Key='${phaserKey}', Type='${assetType}', HashedPath='${hashedPath}'`);
             try {
                 // Call the appropriate Phaser loader method
                 switch (assetType) {
@@ -141,7 +141,22 @@ class AssetLoader {
                         this.loader.image(phaserKey, hashedPath);
                         break;
                     case 'audio':
+                        console.log(`[AssetLoader.preloadAsset] Calling this.loader.audio('${phaserKey}', '${hashedPath}')`);
                         this.loader.audio(phaserKey, hashedPath);
+
+                        // Add event listeners for this specific file
+                        this.loader.once(`filecomplete-audio-${phaserKey}`, (key, type, data) => {
+                            console.log(`[AssetLoader.preloadAsset] SUCCESS: Audio file loaded and cached: Key='${key}'`);
+                            // You can also inspect 'data' here if needed, it's usually the HTMLAudioElement or WebAudio buffer
+                            if (this.audioCache.exists(key)) {
+                                console.log(`[AssetLoader.preloadAsset] Confirmed: Key='${key}' exists in scene.cache.audio.`);
+                            } else {
+                                console.warn(`[AssetLoader.preloadAsset] WARNING: Key='${key}' DOES NOT exist in scene.cache.audio immediately after load event.`);
+                            }
+                        });
+                        this.loader.once(`loaderror-audio-${phaserKey}`, (file) => {
+                            console.error(`[AssetLoader.preloadAsset] ERROR loading audio file: Key='${file.key}', URL='${file.url}', ErrorType='${file.xhrLoader?.statusText || 'Unknown'}'`, file);
+                        });
                         break;
                     case 'spritesheet':
                         if (!config || typeof config.frameWidth !== 'number' || typeof config.frameHeight !== 'number') {

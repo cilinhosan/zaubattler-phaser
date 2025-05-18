@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import menuBackground7 from '../assets/menu_background_illustration_7.jpg';
+import AudioManager from "./game/AudioManager"; // Import AudioManager
 
 class StartGameScene extends Phaser.Scene {
     constructor() {
@@ -11,6 +12,25 @@ class StartGameScene extends Phaser.Scene {
     }
 
     create() {
+        // Initialize AudioManager
+        // Check if an AudioManager instance already exists in the registry (e.g., from a previous game session)
+        if (!this.registry.get('audioManager')) {
+            this.audioManager = new AudioManager(this);
+            this.registry.set('audioManager', this.audioManager);
+            console.log('[StartGameScene] AudioManager created and registered.');
+        } else {
+            this.audioManager = this.registry.get('audioManager');
+            // Update the scene context for the existing AudioManager if necessary,
+            // though AudioManager primarily uses the scene for `this.sound` which should be fine.
+            this.audioManager.scene = this; // Ensure current scene context
+            console.log('[StartGameScene] AudioManager retrieved from registry.');
+        }
+
+        // Play initial menu music - REMOVED to respect browser autoplay policies.
+        // Music will be started by MenuScreenScene after user interaction.
+        // this.audioManager.playMenuMusic();
+        console.log('[StartGameScene] AudioManager initialized. Music will be started by the next scene after user interaction.');
+
         // Set background image
         let bg = this.add.image(0, 0, 'menuBg7').setOrigin(0, 0);
         let scaleX = this.cameras.main.width / bg.width;

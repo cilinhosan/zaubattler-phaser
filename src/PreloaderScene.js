@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import AssetLoader from './AssetLoader'; // Import AssetLoader
 
 class PreloaderScene extends Phaser.Scene {
     constructor() {
@@ -39,92 +40,67 @@ class PreloaderScene extends Phaser.Scene {
         this.registry.set('assetManifest', manifest);
         console.log('Asset Manifest stored in registry.');
 
-        // --- Start Background Audio Load ---
-        this.startBackgroundAudioLoad(); // Initiate loading in the background
+        // Instantiate AssetLoader now that the manifest is in the registry
+        this.assetLoader = new AssetLoader(this);
 
-        // Start the first actual game scene (previously started by StartGameScene)
-        console.log('Starting MenuScreenScene...');
-        this.scene.start('StartGameScene');
-    }
-
-    /**
-     * Initiates loading of non-critical audio assets in the background
-     * after the manifest is loaded and before the next scene starts.
-     * NOTE: Currently commented out as assets are not yet available/imported.
-     */
-    startBackgroundAudioLoad() {
-        console.log("PreloaderScene: Preparing background audio load (logic commented out)...");
-        const manifest = this.registry.get('assetManifest'); // Already checked in create()
-
-        // Helper to find hashed path for audio
-        const getAudioPath = (sourcePath) => {
-            const possibleKeys = [
-                sourcePath,
-                `./${sourcePath}`,
-                sourcePath.startsWith('src/') ? sourcePath : `src/${sourcePath}`
-            ];
-            for (const pKey of possibleKeys) {
-                if (manifest[pKey]) {
-                    return manifest[pKey];
-                }
-            }
-            console.error(`BackgroundAudioLoad: Source path '${sourcePath}' not found in manifest! Tried:`, possibleKeys);
-            return null;
-        };
-
-        // --- Define Audio Assets to Background Load ---
-        // NOTE: Ensure these source paths match the paths used in src/assetImports.js when uncommenting
-        const audioAssets = [
-            { key: 'battle_music_loop', source: 'assets/audio/battle_music_loop.mp3' }, // Example path
-            { key: 'basic_attack', source: 'assets/audio/basic_attack.ogg' }       // Example path
-            // Add more audio assets here
+        // Define audio assets to load
+        const audioAssetsToLoad = [
+            // Paths should now reflect that files are directly under assets/
+            // These paths are used as keys to look up in asset-manifest.json
+            { key: 'audio_battle_theme_1', path: 'assets/audio_battle_theme_1.wav' },
+            { key: 'audio_menu_theme_1', path: 'assets/audio_ui_menu_background_music_1.wav' },
+            { key: 'audio_menu_theme_2', path: 'assets/audio_ui_menu_background_music_2.wav' }
         ];
 
-        let assetsToLoadFound = false; // Flag to check if we would queue anything
+        // UI icons will be loaded by MenuScreenScene directly.
+        // const uiIconAssetsToLoad = [
+        //     { key: 'audio_on_icon', path: 'assets/ui_icon_audio_on.png' },
+        //     { key: 'audio_off_icon', path: 'assets/ui_icon_audio_off.png' }
+        // ];
 
-        // Check if assets exist in manifest (but don't load yet)
-        /* --- SECTION TO UNCOMMENT WHEN ASSETS ARE IMPORTED ---
-        audioAssets.forEach(asset => {
-            const hashedPath = getAudioPath(asset.source);
-            if (hashedPath) {
-                assetsToLoadFound = true;
-                console.log(` - Found background audio in manifest: Key='${asset.key}', Source='${asset.source}', Hashed='${hashedPath}'`);
+        let assetsQueuedCount = 0;
 
-                // --- SECTION TO UNCOMMENT WHEN ASSETS ARE IMPORTED ---
-                // Queue the asset for loading
-                // this.load.audio(asset.key, hashedPath);
-
-                // Optional: Listen for individual file completion (less common here, usually just load and cache)
-                // this.load.once(`filecomplete-audio-${asset.key}`, (key, type, data) => {
-                //     console.log(`   - Background audio loaded: ${key}`);
-                // });
-                // --- END SECTION TO UNCOMMENT ---
-
-            } else {
-                 console.warn(`Background audio asset '${asset.key}' source '${asset.source}' not found in manifest. Cannot queue.`);
-            }
+        console.log('[PreloaderScene] Queuing audio assets for loading...');
+        audioAssetsToLoad.forEach(asset => {
+            console.log(`[PreloaderScene] Loading Audio: Key='${asset.key}', Path='${asset.path}'`);
+            this.assetLoader.preloadAsset(asset.key, asset.path, 'audio');
+            assetsQueuedCount++;
         });
-        --- END SECTION TO UNCOMMENT --- */
 
-
-        /* --- SECTION TO UNCOMMENT WHEN ASSETS ARE IMPORTED ---
-        // Listen for the completion of *this specific load queue*
-        // this.load.once('complete', () => {
-        //     console.log("PreloaderScene: Background audio load complete.");
-        //     // All files queued in this batch are loaded and cached.
+        // console.log('[PreloaderScene] Queuing UI icon assets for loading...');
+        // uiIconAssetsToLoad.forEach(asset => {
+        //     console.log(`[PreloaderScene] Loading Image: Key='${asset.key}', Path='${asset.path}'`);
+        //     this.assetLoader.preloadAsset(asset.key, asset.path, 'image');
+        //     assetsQueuedCount++;
         // });
-        --- END SECTION TO UNCOMMENT --- */
 
-        // *** Manually start the loader ***
-        if (assetsToLoadFound) {
-             console.log("PreloaderScene: Manual load start required for background audio (currently commented out).");
-             /* --- SECTION TO UNCOMMENT WHEN ASSETS ARE IMPORTED ---
-             // this.load.start();
-             --- END SECTION TO UNCOMMENT --- */
+        // Listen for the completion of this loading queue
+        this.load.on('complete', () => {
+            console.log('[PreloaderScene] All assets (including audio) loaded.');
+            // Start the first actual game scene
+            console.log('[PreloaderScene] Starting StartGameScene...');
+            this.scene.start('StartGameScene');
+        });
+
+        // Manually start the loader if there are assets queued in create()
+        // Check if there are files in the queue.
+        // The loader might have already completed if only manifest.json was in preload queue
+        // and it finished before 'complete' listener was added.
+        // A more robust way is to check this.load.isLoading() or queue size.
+        // For simplicity, if we added assets, we start it.
+        if (assetsQueuedCount > 0) {
+            console.log(`[PreloaderScene] Manually starting loader for ${assetsQueuedCount} queued assets...`);
+            this.load.start();
         } else {
-             console.log("PreloaderScene: No background audio assets found in manifest to load.");
+            // If no audio assets or UI icons were queued (e.g. array was empty),
+            // and manifest was the only thing, it might have completed.
+            // In this case, we can directly start the next scene.
+            // This else block might be redundant if 'complete' fires even for an empty queue added in create.
+            console.log('[PreloaderScene] No additional audio assets to load, starting StartGameScene directly.');
+            this.scene.start('StartGameScene');
         }
     }
+    // Removed startBackgroundAudioLoad method as its logic is integrated above
 }
 
 export default PreloaderScene;

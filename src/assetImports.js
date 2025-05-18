@@ -35,6 +35,14 @@ import menuBackground6 from '../assets/menu_background_illustration_6.jpg';
 import menuBackground7 from '../assets/menu_background_illustration_7.jpg';
 // UI Icons
 import fullscreenIcon from '../assets/fullscreen_icon.png';
+import audioOnIcon from '../assets/ui_icon_audio_on.png';
+import audioOffIcon from '../assets/ui_icon_audio_off.png';
+
+// Audio Assets
+import audioBattleTheme1 from '../assets/audio_battle_theme_1.wav';
+import audioMenuTheme1 from '../assets/audio_ui_menu_background_music_1.wav';
+import audioMenuTheme2 from '../assets/audio_ui_menu_background_music_2.wav';
+
 // Log imported paths (optional, for debugging build process)
 // The variables hold the final hashed paths at runtime, but are useful here
 // to confirm Webpack is resolving them during the build.
@@ -47,7 +55,12 @@ console.log('[Asset Imports] Imported paths (variables hold hashed paths at runt
     elzetteBattleIcon,
     defaultLandscapeIllustration,
     elzetteLandscapeIllustration,
-    elzetteProfileIllustration
+    elzetteProfileIllustration,
+    audioBattleTheme1,
+    audioMenuTheme1,
+    audioMenuTheme2,
+    audioOnIcon,
+    audioOffIcon
 });
 
 // No need to export anything.

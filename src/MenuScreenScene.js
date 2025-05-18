@@ -4,6 +4,8 @@ import { getRandomCharacters } from "./game/starterCharacterPool.js"; // Import 
 import GameDataManager from "./game/GameDataManager.js"; // Import the GameDataManager singleton
 import menuBackground1 from '../assets/menu_background_illustration_1.jpg';
 import fullscreenIcon from '../assets/fullscreen_icon.png'; // Import the fullscreen icon
+// AudioManager is not directly imported as it's expected to be in the registry
+// import AudioManager from "./game/AudioManager";
 
 class MenuScreenScene extends Phaser.Scene {
     constructor() {
@@ -12,10 +14,36 @@ class MenuScreenScene extends Phaser.Scene {
 
     preload() {
         this.load.image('menuBg1', menuBackground1);
-        this.load.image('fullscreenIcon', fullscreenIcon); // Load the fullscreen icon
+        // Load UI icons directly in this scene's preload
+        this.load.image('fullscreenIcon', fullscreenIcon);
+        this.load.image('audio_on_icon', 'assets/ui_icon_audio_on.png'); // Use the direct path for clarity, key is 'audio_on_icon'
+        this.load.image('audio_off_icon', 'assets/ui_icon_audio_off.png'); // Use the direct path, key is 'audio_off_icon'
     }
 
     create() {
+        this.audioManager = this.registry.get('audioManager');
+        if (this.audioManager) {
+            // Ensure AudioManager is using the current scene context for sound operations
+            this.audioManager.scene = this;
+            
+            // Play menu music if not already playing or if battle music was playing
+            // This handles returning from a battle scene.
+            // The `playMenuMusic` method in AudioManager will handle selecting a new track
+            // if the last played was also menu music (due to `forceDifferent` logic).
+            // We want a new menu song if we came from battle.
+            if (!this.audioManager.currentMusic ||
+                (this.audioManager.currentMusic && this.audioManager.currentMusic.key === this.audioManager.battleMusicKey)) {
+                this.audioManager.playMenuMusic(true); // forceDifferent = true
+                console.log('[MenuScreenScene] Playing new menu music after battle or if no music was playing.');
+            } else if (this.audioManager.currentMusic && !this.audioManager.currentMusic.isPlaying) {
+                // If menu music was paused or stopped for some reason, restart it.
+                this.audioManager.playMenuMusic(false); // forceDifferent = false, might replay same if only one option
+                 console.log('[MenuScreenScene] Restarting menu music.');
+            }
+        } else {
+            console.warn('[MenuScreenScene] AudioManager not found in registry. Music will not play.');
+        }
+
         // Set background image
         let bg = this.add.image(0, 0, 'menuBg1').setOrigin(0, 0);
         let scaleX = this.cameras.main.width / bg.width;
@@ -176,7 +204,8 @@ class MenuScreenScene extends Phaser.Scene {
         .setInteractive();
 
         // Optionally, scale the icon if it's too large or small
-        fullscreenButton.setScale(0.5); // Example: scale to 50%
+        const fullscreenIconScale = 0.5; // Scale for the 160x160 fullscreen icon
+        fullscreenButton.setScale(fullscreenIconScale);
 
         fullscreenButton.on('pointerdown', () => {
             if (this.scale.isFullscreen) {
@@ -193,6 +222,54 @@ class MenuScreenScene extends Phaser.Scene {
         // Optional: Add hover effect (tinting for images)
         fullscreenButton.on('pointerover', () => fullscreenButton.setTint(0x00ff00)); // Green tint on hover
         fullscreenButton.on('pointerout', () => fullscreenButton.clearTint()); // Remove tint on hover out
+
+        // --- Add Audio Toggle Button ---
+        // Position to the left of the fullscreen button
+        const horizontalPaddingBetweenButtons = 10;
+        const fullscreenButtonWidth = fullscreenButton.width * fullscreenIconScale; // Displayed width
+        
+        // X position for the audio button (its right edge)
+        const audioButtonX = (this.cameras.main.width - padding - fullscreenButtonWidth) - horizontalPaddingBetweenButtons;
+        const audioButtonY = padding; // Same Y as fullscreen button
+
+        // Determine initial texture based on AudioManager's mute state
+        let initialAudioIconKey = 'audio_on_icon'; // Default to 'on'
+        if (this.audioManager && this.audioManager.isMuted()) {
+            initialAudioIconKey = 'audio_off_icon';
+        }
+
+        this.audioToggleButton = this.add.image(
+            audioButtonX,
+            audioButtonY,
+            initialAudioIconKey
+        )
+        .setOrigin(1, 0) // Origin top-right
+        .setInteractive();
+
+        // Calculate scale for audio icon (256x256 native) to match displayed height of fullscreen icon
+        // Fullscreen displayed height = 160 * 0.5 = 80px
+        // Audio icon scale = 80 / 256 = 0.3125
+        const audioIconScale = (160 * fullscreenIconScale) / 256;
+        this.audioToggleButton.setScale(audioIconScale);
+
+        this.audioToggleButton.on('pointerdown', () => {
+            if (this.audioManager) {
+                const MUTE_STATE_BEFORE_TOGGLE = this.audioManager.isMuted();
+                console.log(`[MenuScreenScene] AudioButton click. Mute state BEFORE toggle: ${MUTE_STATE_BEFORE_TOGGLE}`);
+
+                const isNowMuted = this.audioManager.toggleMute(); // toggleMute itself logs the new state
+                
+                const newTextureKey = isNowMuted ? 'audio_off_icon' : 'audio_on_icon';
+                this.audioToggleButton.setTexture(newTextureKey);
+                console.log(`[MenuScreenScene] AudioButton texture set to: ${newTextureKey}`);
+            } else {
+                console.warn('[MenuScreenScene] AudioButton clicked, but no audioManager found.');
+            }
+        });
+
+        // Optional: Add hover effect for audio toggle button
+        this.audioToggleButton.on('pointerover', () => this.audioToggleButton.setTint(0x00ff00));
+        this.audioToggleButton.on('pointerout', () => this.audioToggleButton.clearTint());
 
     }
 }
