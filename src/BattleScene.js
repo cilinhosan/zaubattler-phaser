@@ -340,8 +340,22 @@ class BattleScene extends Phaser.Scene {
                 }
 
                 if (validTargetsForActionExist) {
+                    let finalTargetsForExecute;
+
+                    if (chosenAction.name === "Basic Attack") {
+                        if (currentActionTargetTeam.length > 0) {
+                            const randomTarget = currentActionTargetTeam[Math.floor(Math.random() * currentActionTargetTeam.length)];
+                            finalTargetsForExecute = [randomTarget]; // Pass as an array with one target
+                        } else {
+                            finalTargetsForExecute = []; // No targets for basic attack
+                        }
+                    } else {
+                        // For specific skills, pass the whole relevant team for the skill to process
+                        finalTargetsForExecute = currentActionTargetTeam;
+                    }
+
                     // chosenAction.execute now returns an array of sub-action functions
-                    const subActions = chosenAction.execute(this, currentActionTargetTeam, currentActionCasterTeam);
+                    const subActions = chosenAction.execute(this, finalTargetsForExecute, currentActionCasterTeam);
 
                     if (Array.isArray(subActions) && subActions.length > 0) {
                         // Developer log for sub-action count

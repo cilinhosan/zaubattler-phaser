@@ -62,7 +62,7 @@ export class KatherineDefinition extends CharacterDefinition {
             skillFireBlast: {
                 id: "katherine_fire_blast",
                 name: "Fire Blast",
-                description: "Engulfs a single random enemy in flames, dealing Fire damage equal to 300% of Katherine's Attack.",
+                description: "Engulfs a single random enemy in flames, dealing Fire damage equal to 220% of Katherine's Attack.",
                 type: 'active',
                 cooldown: 4,
                 targetType: 'enemy'
@@ -110,7 +110,7 @@ export class KatherineDefinition extends CharacterDefinition {
                 console.log(`Fire Blast: Target ${target.getName()} defeated or battle over.`);
                 return;
             }
-            const damageOutput = Math.floor(caster.currentAtk * 3.0);
+            const damageOutput = Math.floor(caster.currentAtk * 2.2);
             console.log(`${caster.getName()} uses Fire Blast on ${target.getName()}!`);
             SkillHelper.dealDamage(caster, target, damageOutput, FACTION.CRIMSON, { skillId: skillId }, battleScene);
         };

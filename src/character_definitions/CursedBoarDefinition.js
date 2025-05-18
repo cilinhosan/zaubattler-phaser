@@ -74,7 +74,7 @@ export class CursedBoarDefinition extends CharacterDefinition { // Renamed class
         super({
             id: "cursedBoar", // Changed ID
             name: "Cursed Boar", // Changed name
-            stats: { hp: 850, atk: 80, def: 50, critChance: 0.10, critDamage: 1.50 }, // Stats remain same as Cursed Wolf for now
+            stats: { hp: 1100, atk: 90, def: 50, critChance: 0.10, critDamage: 1.50 }, // Stats remain same as Cursed Wolf for now
             faction: FACTION.NEUTRAL,
             playableByPlayer: false,
             description: "A ferocious, cursed boar.", // Updated description
@@ -93,7 +93,7 @@ export class CursedBoarDefinition extends CharacterDefinition { // Renamed class
             skillBloodthirstyTusks: {
                 id: "cursed_boar_bloodthirsty_tusks",
                 name: "Bloodthirsty Tusks",
-                description: "Gores a random enemy for 130% Attack as Dark damage. Damage is doubled by Blood Frenzy if the target is Bleeding. If the target was Bleeding before this attack, strikes again (with Blood Frenzy). If not Bleeding, inflicts Bleed after the first hit.",
+                description: "Gores a random enemy for 150% Attack as Dark damage. Damage is doubled by Blood Frenzy if the target is Bleeding. If the target was Bleeding before this attack, strikes again (with Blood Frenzy). If not Bleeding, inflicts Bleed after the first hit.",
                 type: 'active',
                 cooldown: 4,
                 targetType: 'enemy'
@@ -162,7 +162,7 @@ export class CursedBoarDefinition extends CharacterDefinition { // Renamed class
                     return; // Skip if target defeated or battle ended
                 }
                 
-                let damage = Math.floor(caster.currentAtk * 1.3); // 130% ATK
+                let damage = Math.floor(caster.currentAtk * 1.5); // 150% ATK
                 const isTargetBleedingForThisHit = currentTarget.attachedEffects.some(effect => effect.type === 'bleed' && effect.isActive);
                 
                 if (isTargetBleedingForThisHit) {

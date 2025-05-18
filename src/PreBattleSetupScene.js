@@ -528,7 +528,7 @@ class PreBattleSetupScene extends Phaser.Scene {
     _getTicketReward(battleIndex) {
         // TODO: Implement logic based on battleIndex later
         console.log(`_getTicketReward called for battleIndex: ${battleIndex}`);
-        return 2; // Fixed reward for now
+        return 1; // Fixed reward for now
     }
 
     _populateInitialTeam(playerTeamSlotsData) {
