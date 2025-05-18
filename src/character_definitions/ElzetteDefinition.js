@@ -71,9 +71,30 @@ export class ElzetteDefinition extends CharacterDefinition {
         });
 
         this.skillMetadata = {
-            skillLightBlast: { id: "elzette_light_blast", name: "Light Blast", description: "Deals moderate Light damage to a single enemy.", type: 'active', cooldown: 4, targetType: 'enemy' },
-            skillRadiantArea: { id: "elzette_radiant_area", name: "Radiant Area", description: "Deals low Light damage to all enemies.", type: 'active', cooldown: 4, targetType: 'allEnemies' },
-            skillHeartOfLight: { id: "elzette_heart_of_light", name: "Heart of Light", description: "Passive: Increases ATK by 20.", type: 'passive', applyImmediately: true, modifiesStats: true },
+            skillLightBlast: {
+                id: "elzette_light_blast",
+                name: "Light Blast",
+                description: "Blasts a single random enemy with pure light, dealing Light damage equal to 200% of Elzette's Attack.",
+                type: 'active',
+                cooldown: 4,
+                targetType: 'enemy'
+            },
+            skillRadiantArea: {
+                id: "elzette_radiant_area",
+                name: "Radiant Area",
+                description: "Bathes all enemies in radiant light, dealing Light damage equal to 150% of Elzette's Attack to each.",
+                type: 'active',
+                cooldown: 4,
+                targetType: 'allEnemies'
+            },
+            skillHeartOfLight: {
+                id: "elzette_heart_of_light",
+                name: "Heart of Light",
+                description: "Passive: Elzette's inner light permanently increases her Attack by 20% of her base Attack at the start of battle.",
+                type: 'passive',
+                applyImmediately: true,
+                modifiesStats: true
+            },
         };
     }
 

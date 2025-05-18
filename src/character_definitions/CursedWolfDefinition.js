@@ -114,8 +114,22 @@ export class CursedWolfDefinition extends CharacterDefinition { // Renamed class
 
         // Update skill IDs to reflect new character ID for clarity, though not strictly necessary if skills are generic
         this.skillMetadata = {
-            skillBite: { id: "cursed_wolf_bite", name: "Bite", description: "Deals physical damage. 50% chance to apply Bleed (5% Max HP/turn for 2 turns).", type: 'active', cooldown: 3, targetType: 'enemy' },
-            skillPackHunter: { id: "cursed_wolf_pack_hunter", name: "Pack Hunter", description: "Passive: For each living ally, increases Attack and Defense by 10%.", type: 'passive', applyImmediately: true, modifiesStats: true }
+            skillBite: {
+                id: "cursed_wolf_bite",
+                name: "Bite",
+                description: "Viciously bites a random enemy, dealing Dark damage equal to 180% of Cursed Wolf's Attack. Has a 50% chance to inflict Bleed, causing the target to lose 5% of their Max HP as damage each turn for 2 turns.",
+                type: 'active',
+                cooldown: 3,
+                targetType: 'enemy'
+            },
+            skillPackHunter: {
+                id: "cursed_wolf_pack_hunter",
+                name: "Pack Hunter",
+                description: "Passive: The Cursed Wolf's Attack and Defense are each increased by 10% of its base stats for every other living ally on the field.",
+                type: 'passive',
+                applyImmediately: true,
+                modifiesStats: true
+            }
         };
     }
 

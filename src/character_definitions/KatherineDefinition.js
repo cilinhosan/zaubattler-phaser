@@ -59,9 +59,30 @@ export class KatherineDefinition extends CharacterDefinition {
         });
 
         this.skillMetadata = {
-            skillFireBlast: { id: "katherine_fire_blast", name: "Fire Blast", description: "Deals moderate Fire damage to a single enemy.", type: 'active', cooldown: 4, targetType: 'enemy' },
-            skillVolcanicArea: { id: "katherine_volcanic_area", name: "Volcanic Area", description: "Deals low Fire damage to all enemies.", type: 'active', cooldown: 4, targetType: 'allEnemies' },
-            skillHeartOfFire: { id: "katherine_heart_of_fire", name: "Heart of Fire", description: "Passive: Increases ATK by 15.", type: 'passive', applyImmediately: true, modifiesStats: true },
+            skillFireBlast: {
+                id: "katherine_fire_blast",
+                name: "Fire Blast",
+                description: "Engulfs a single random enemy in flames, dealing Fire damage equal to 300% of Katherine's Attack.",
+                type: 'active',
+                cooldown: 4,
+                targetType: 'enemy'
+            },
+            skillVolcanicArea: {
+                id: "katherine_volcanic_area",
+                name: "Volcanic Area",
+                description: "Unleashes a wave of fire, dealing Fire damage equal to 120% of Katherine's Attack to all enemies.",
+                type: 'active',
+                cooldown: 4,
+                targetType: 'allEnemies'
+            },
+            skillHeartOfFire: {
+                id: "katherine_heart_of_fire",
+                name: "Heart of Fire",
+                description: "Passive: Katherine's fiery spirit permanently increases her Attack by 30% of her base Attack at the start of battle.",
+                type: 'passive',
+                applyImmediately: true,
+                modifiesStats: true
+            },
         };
     }
 

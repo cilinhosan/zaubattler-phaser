@@ -90,10 +90,37 @@ export class CursedBoarDefinition extends CharacterDefinition { // Renamed class
 
         // Update skill IDs and names for Cursed Boar
         this.skillMetadata = {
-            skillBloodthirstyTusks: { id: "cursed_boar_bloodthirsty_tusks", name: "Bloodthirsty Tusks", description: "Attacks a random target (130% ATK). If target isn't Bleeding, applies Bleed. If target is Bleeding, attacks again.", type: 'active', cooldown: 4, targetType: 'enemy' },
-            skillBloodFrenzy: { id: "cursed_boar_blood_frenzy", name: "Blood Frenzy", description: "Passive: Deals double damage to enemies suffering from Bleed.", type: 'passive', applyImmediately: false }, // This passive's logic is implemented in skillCharge
-            skillProtectiveHerd: { id: "cursed_boar_protective_herd", name: "Protective Herd", description: "Passive: Defense increases by 25% for each other living ally.", type: 'passive', applyImmediately: true, modifiesStats: true },
-            skillSavageRush: { id: "cursed_boar_savage_rush", name: "Savage Rush", description: "Attacks a random living target (130% ATK). If the target is not Bleeding, applies Bleed and the skill ends. If the target is Bleeding, attacks it, then selects a new random living target not yet hit by this skill activation. This process repeats until a non-Bleeding target is hit or all living targets have been attacked once by this skill activation.", type: 'active', cooldown: 4, targetType: 'enemy' }
+            skillBloodthirstyTusks: {
+                id: "cursed_boar_bloodthirsty_tusks",
+                name: "Bloodthirsty Tusks",
+                description: "Gores a random enemy for 130% Attack as Dark damage. Damage is doubled by Blood Frenzy if the target is Bleeding. If the target was Bleeding before this attack, strikes again (with Blood Frenzy). If not Bleeding, inflicts Bleed after the first hit.",
+                type: 'active',
+                cooldown: 4,
+                targetType: 'enemy'
+            },
+            skillBloodFrenzy: {
+                id: "cursed_boar_blood_frenzy",
+                name: "Blood Frenzy",
+                description: "Passive: The Cursed Boar deals double damage with its attacks against targets currently suffering from Bleed.",
+                type: 'passive',
+                applyImmediately: false
+            }, // This passive's logic is implemented in skillCharge
+            skillProtectiveHerd: {
+                id: "cursed_boar_protective_herd",
+                name: "Protective Herd",
+                description: "Passive: The Cursed Boar's Defense is increased by 25% of its base Defense for each other living ally on the field.",
+                type: 'passive',
+                applyImmediately: true,
+                modifiesStats: true
+            },
+            skillSavageRush: {
+                id: "cursed_boar_savage_rush",
+                name: "Savage Rush",
+                description: "Charges a random living enemy for 130% Attack as Dark damage. If the target is Bleeding, the Boar attacks another random living enemy not yet hit by this skill. This chain continues as long as bleeding targets are hit. If a non-Bleeding target is hit, Bleed is applied to it, and the rush ends. The rush also ends if all living enemies have been hit once.",
+                type: 'active',
+                cooldown: 4,
+                targetType: 'enemy'
+            }
         };
     }
 

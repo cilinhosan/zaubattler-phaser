@@ -574,22 +574,32 @@ class PreBattleSetupScene extends Phaser.Scene {
         // // this.selectedInventoryDisplay = MenuCharacterDisplay; // Already set above
         // this._showActionPopup(characterData, MenuCharacterDisplay, clickX, clickY); // Already called above
     }
-    _showActionPopup(characterData, inventoryDisplay, clickX, clickY) {
-        console.log(`[Debug] _showActionPopup called for ${characterData.name}.`);
+    _showActionPopup(characterData, displayObject, clickX, clickY, isEnemyInspection = false) {
+        console.log(`[Debug] _showActionPopup called for ${characterData.name}. Is Enemy: ${isEnemyInspection}`);
 
         // REMOVED: Disable background interactivity logic (Ensuring removal)
 
-        // Determine if the character is currently in the team
-        const isInTeam = this.playerTeamDisplays.some(displayObj => displayObj && displayObj.data === characterData);
-        console.log(`[Debug _showActionPopup] Is ${characterData.name} in team? ${isInTeam}`);
+        // Determine if the character is currently in the team (only relevant for player characters)
+        let isInTeam = false;
+        if (!isEnemyInspection) {
+            isInTeam = this.playerTeamDisplays.some(displayObj => displayObj && displayObj.data === characterData);
+            console.log(`[Debug _showActionPopup] Is ${characterData.name} in player team? ${isInTeam}`);
+        }
+
 
         // Determine button configuration
-        const showMove = true; // Always show move option for now
         const buttonsToShow = [];
-        if (showMove) {
-            buttonsToShow.push({ text: 'Move', color: '#FFFFFF', action: 'move' }); // Initial color white
+        if (isEnemyInspection) {
+            buttonsToShow.push({ text: 'Inspect', color: '#FFFFFF', action: 'inspect' });
+        } else {
+            // For player characters (from inventory or team slot)
+            const showMove = true; // Always show move option for player characters
+            if (showMove) {
+                buttonsToShow.push({ text: 'Move', color: '#FFFFFF', action: 'move' }); // Initial color white
+            }
+            buttonsToShow.push({ text: 'Inspect', color: '#FFFFFF', action: 'inspect' }); // Initial color white
         }
-        buttonsToShow.push({ text: 'Inspect', color: '#FFFFFF', action: 'inspect' }); // Initial color white
+
 
         const numberOfButtons = buttonsToShow.length;
         const popupWidth = 100; // Keep fixed width for now
@@ -606,8 +616,8 @@ class PreBattleSetupScene extends Phaser.Scene {
 
         // Create a container for the popup elements
         this.actionPopup = this.add.container(popupX, popupY);
-        // Link popup to the display object that triggered it (inventory or team slot display)
-        this.actionPopup.setData('targetDisplay', inventoryDisplay); // Use consistent key 'targetDisplay'
+        // Link popup to the display object that triggered it
+        this.actionPopup.setData('targetDisplay', displayObject); // Use consistent key 'targetDisplay'
         this.actionPopup.setData('characterData', characterData); // Store character data directly
 
         // Background
@@ -680,17 +690,33 @@ class PreBattleSetupScene extends Phaser.Scene {
                 this._hideActionPopup();
 
                 // Perform the action based on buttonInfo
-                if (buttonInfo.action === 'move') {
+                if (buttonInfo.action === 'move') { // This block will only be reached if !isEnemyInspection
                     if (isInTeam) {
                         console.log(`[Debug] Calling _handleMoveFromTeamClick for ${characterData.name}`);
                         this._handleMoveFromTeamClick(characterData);
                     } else {
                         console.log(`[Debug] Calling _handleMoveToTeamClick for ${characterData.name}`);
-                        this._handleMoveToTeamClick(characterData, inventoryDisplay);
+                        // displayObject here is the MenuCharacterDisplay from inventory
+                        this._handleMoveToTeamClick(characterData, displayObject);
                     }
                 } else if (buttonInfo.action === 'inspect') {
                     console.log(`[Debug] Calling _handleInspectClick for ${characterData.name}`);
-                    this._handleInspectClick(characterData);
+                    // Ensure characterData passed to inspect has the definition
+                    // For enemies, this.currentEnemyTeam stores BattleCharacter instances which should have .definition
+                    // For player characters, characterData from inventory/team slots should also have .definition
+                    let charDataForInspect = characterData;
+                    if (!charDataForInspect.definition && charDataForInspect.definitionId) {
+                        console.warn(`[Debug _showActionPopup] Character ${charDataForInspect.name} missing definition, attempting to fetch for inspect.`);
+                        const freshDef = getCharacterDefinition(charDataForInspect.definitionId);
+                        if (freshDef) {
+                            // Create a temporary object or clone if necessary to avoid modifying original BattleCharacter/MenuCharacter
+                            // For now, directly attaching, assuming CharacterProfileScene handles it well.
+                            charDataForInspect = { ...charDataForInspect, definition: freshDef };
+                        } else {
+                            console.error(`[Debug _showActionPopup] Could not fetch definition for ${charDataForInspect.definitionId}. Inspect might fail.`);
+                        }
+                    }
+                    this._handleInspectClick(charDataForInspect);
                 }
             });
 
@@ -788,10 +814,25 @@ class PreBattleSetupScene extends Phaser.Scene {
 
         console.log('Clicked team member:', characterData.name);
         this._hideActionPopup(); // Hide any existing popup first
-        // Show popup, likely inspect-only for now
-        // Pass 'icon' as the display target for positioning/checking later
-        this._showActionPopup(characterData, icon, pointer.worldX, pointer.worldY, true); // true = inspectOnly
+        // Show popup for player team member
+        // Pass 'icon' as the display object, and false for isEnemyInspection
+        this._showActionPopup(characterData, icon, pointer.worldX, pointer.worldY, false);
     }
+
+    _handleEnemyIconClick(enemyIcon, pointer) {
+        const characterData = enemyIcon.getData('characterData'); // This is a BattleCharacter instance
+        if (!characterData) {
+            console.error("Enemy icon clicked, but no characterData found.", enemyIcon);
+            return;
+        }
+        console.log('Clicked enemy icon:', characterData.name);
+        this._hideActionPopup(); // Hide any existing popup first
+
+        // Show popup for enemy, only with "Inspect" option
+        // Pass 'enemyIcon' as the display object, and true for isEnemyInspection
+        this._showActionPopup(characterData, enemyIcon, pointer.worldX, pointer.worldY, true);
+    }
+
 
      _handleTeamSlotClick(slotIndex) {
         console.log(`[Debug] === _handleTeamSlotClick START for index: ${slotIndex}. isMovingState: ${this.isMovingState} ===`); // <-- ADDED START LOG
@@ -855,8 +896,8 @@ class PreBattleSetupScene extends Phaser.Scene {
                     this._hideActionPopup();
                 }
                 // Show popup for the character in the team slot.
-                // Pass the character data, the display object *in the slot*, and slot position.
-                this._showActionPopup(characterDataInSlot, characterDisplayInSlot, worldX, worldY);
+                // Pass the character data, the display object *in the slot*, slot position, and false for isEnemyInspection.
+                this._showActionPopup(characterDataInSlot, characterDisplayInSlot, worldX, worldY, false);
                 console.log('[Debug] Stopping propagation after showing popup from team slot.');
                 if (event) event.stopPropagation(); // Prevent this click from triggering global listener
 
@@ -1021,6 +1062,19 @@ class PreBattleSetupScene extends Phaser.Scene {
                 // Use enemy icon
                 const enemyIcon = this.add.image(pos.x, pos.y, 'enemy_icon');
                 enemyIcon.setDisplaySize(99, 99);
+                enemyIcon.setInteractive(); // Make enemy icon interactive
+                enemyIcon.setData('characterData', character); // Store the BattleCharacter instance
+
+                enemyIcon.on('pointerdown', (pointer) => {
+                    // Prevent opening multiple popups for the same enemy if already open
+                    if (this.actionPopup && this.actionPopup.getData('targetDisplay') === enemyIcon) {
+                        console.log(`[Debug] Click ignored, popup already open for enemy ${character.name}`);
+                        return;
+                    }
+                    this._handleEnemyIconClick(enemyIcon, pointer);
+                    if (event) event.stopPropagation(); // Stop propagation if event is available
+                });
+                
                 // Optional: Add name text below icon
                 const enemyNameText = this.add.text(pos.x, pos.y + 60, character.name, { fontSize: '16px', fill: '#fff', align: 'center' }).setOrigin(0.5);
                 // Keep the red box for now, or remove if icon is sufficient

@@ -101,8 +101,22 @@ export class WerewolfDefinition extends CharacterDefinition {
         });
 
         this.skillMetadata = {
-            skillSavageClaw: { id: "werewolf_savage_claw", name: "Savage Claw", description: "Deals physical damage with a chance to cause Bleed.", type: 'active', cooldown: 4, targetType: 'enemy' },
-            skillLunarFrenzy: { id: "werewolf_lunar_frenzy", name: "Lunar Frenzy", description: "Passive: Increases ATK by 25 when HP is below 40%.", type: 'passive', applyImmediately: true, modifiesStats: true }
+            skillSavageClaw: {
+                id: "werewolf_savage_claw",
+                name: "Savage Claw",
+                description: "Lashes out at a single random enemy, dealing Dark damage equal to 110% of Werewolf's Attack. Has a 50% chance to inflict Bleed, dealing an additional 60% of Werewolf's Attack as damage over 3 turns.",
+                type: 'active',
+                cooldown: 4,
+                targetType: 'enemy'
+            },
+            skillLunarFrenzy: {
+                id: "werewolf_lunar_frenzy",
+                name: "Lunar Frenzy",
+                description: "Passive: When the Werewolf's HP drops below 40%, its Attack is increased by 25.",
+                type: 'passive',
+                applyImmediately: true,
+                modifiesStats: true
+            }
         };
     }
 
