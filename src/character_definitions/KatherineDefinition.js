@@ -51,7 +51,11 @@ export class KatherineDefinition extends CharacterDefinition {
             faceIconKey: 'default_character_icon', // Reverted to original
             faceIconPath: 'assets/default_character_ilustration_face_icon.png', // Reverted to original
             battleIconKey: 'default_battle_icon', // Reverted to original
-            battleIconPath: 'assets/default_character_ilustration_4_3.png' // Reverted to original
+            battleIconPath: 'assets/default_character_ilustration_4_3.png', // Reverted to original
+            // landscapeIllustrationKey: 'katherine_landscape', // Using default from BaseDefinitions
+            // landscapeIllustrationPath: 'assets/default_character_illustration_landscape.jpg', // Using default
+            profileIllustrationKey: 'katherine_profile_illustration',
+            profileIllustrationPath: 'assets/default_character_ilustration_4_3.png'
         });
 
         this.skillMetadata = {

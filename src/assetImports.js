@@ -18,6 +18,7 @@ import defaultEnemyBattleIcon from '../assets/default_enemy_illustration_4_3.png
 import elzetteFaceIcon from '../assets/elzette_illustration_face_icon.png';
 import elzetteBattleIcon from '../assets/elzette_illustration_4_3.png';
 import elzetteLandscapeIllustration from '../assets/elzette_illustration_landscape.jpg';
+import elzetteProfileIllustration from '../assets/elzette_illustration_profile.png';
 
 // Add imports for other specific character assets if they exist (e.g., Katherine, Orc, etc.)
 // Example:
@@ -45,7 +46,8 @@ console.log('[Asset Imports] Imported paths (variables hold hashed paths at runt
     elzetteFaceIcon,
     elzetteBattleIcon,
     defaultLandscapeIllustration,
-    elzetteLandscapeIllustration
+    elzetteLandscapeIllustration,
+    elzetteProfileIllustration
 });
 
 // No need to export anything.

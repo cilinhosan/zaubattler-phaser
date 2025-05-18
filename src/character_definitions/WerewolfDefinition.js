@@ -93,7 +93,11 @@ export class WerewolfDefinition extends CharacterDefinition {
             faceIconKey: 'default_character_icon',
             faceIconPath: 'assets/default_character_ilustration_face_icon.png',
             battleIconKey: 'default_enemy_icon',
-            battleIconPath: 'assets/default_enemy_illustration_4_3.png'
+            battleIconPath: 'assets/default_enemy_illustration_4_3.png',
+            // landscapeIllustrationKey: 'werewolf_landscape', // Using default from BaseDefinitions
+            // landscapeIllustrationPath: 'assets/default_character_illustration_landscape.jpg', // Using default
+            profileIllustrationKey: 'werewolf_profile_illustration',
+            profileIllustrationPath: 'assets/default_enemy_illustration_4_3.png'
         });
 
         this.skillMetadata = {

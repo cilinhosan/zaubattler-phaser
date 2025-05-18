@@ -105,7 +105,11 @@ export class CursedWolfDefinition extends CharacterDefinition { // Renamed class
             faceIconKey: 'default_character_icon', // Consider updating if new assets are made
             faceIconPath: 'assets/default_character_ilustration_face_icon.png',
             battleIconKey: 'default_enemy_icon', // Consider updating if new assets are made
-            battleIconPath: 'assets/default_enemy_illustration_4_3.png'
+            battleIconPath: 'assets/default_enemy_illustration_4_3.png',
+            // landscapeIllustrationKey: 'cursed_wolf_landscape', // Using default from BaseDefinitions
+            // landscapeIllustrationPath: 'assets/default_character_illustration_landscape.jpg', // Using default
+            profileIllustrationKey: 'cursed_wolf_profile_illustration',
+            profileIllustrationPath: 'assets/default_enemy_illustration_4_3.png'
         });
 
         // Update skill IDs to reflect new character ID for clarity, though not strictly necessary if skills are generic

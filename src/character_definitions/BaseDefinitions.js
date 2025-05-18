@@ -19,7 +19,8 @@ export class CharacterDefinition {
     constructor({
         id, name, stats, faction, playableByPlayer = false, description = "",
         faceIconKey, faceIconPath, battleIconKey, battleIconPath,
-        landscapeIllustrationKey, landscapeIllustrationPath // Added landscape illustration properties
+        landscapeIllustrationKey, landscapeIllustrationPath, // Added landscape illustration propertie
+        profileIllustrationKey, profileIllustrationPath
     }) {
         if (!id || !name || !stats || !faction) {
             throw new Error("Missing required fields for CharacterDefinition: id, name, stats, faction");
@@ -44,6 +45,8 @@ export class CharacterDefinition {
         this.battleIconPath = battleIconPath || 'assets/default_character_ilustration_4_3.png';
         this.landscapeIllustrationKey = landscapeIllustrationKey || 'defaultLandscapeIllustration'; // Added
         this.landscapeIllustrationPath = landscapeIllustrationPath || 'assets/default_character_illustration_landscape.jpg'; // Added
+        this.profileIllustrationKey = profileIllustrationKey || 'defaultProfileIllustration';
+        this.profileIllustrationPath = profileIllustrationPath || 'assets/default_character_ilustration_4_3.png'; // Defaulting to character illustration for now
 
         // Skills will be defined as methods in subclasses,
         // and metadata stored in a separate structure.

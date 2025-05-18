@@ -65,7 +65,9 @@ export class ElzetteDefinition extends CharacterDefinition {
             battleIconKey: 'elzette_battle_icon',
             battleIconPath: 'assets/elzette_illustration_4_3.png',
             landscapeIllustrationKey: 'elzetteLandscapeIllustration', // Renamed to camelCase and updated key
-            landscapeIllustrationPath: 'assets/elzette_illustration_landscape.jpg' // Path remains the same
+            landscapeIllustrationPath: 'assets/elzette_illustration_landscape.jpg', // Path remains the same
+            profileIllustrationKey: 'elzetteProfileIllustration', // Renamed to camelCase and updated key
+            profileIllustrationPath: 'assets/elzette_illustration_profile.png' // Path remains the same
         });
 
         this.skillMetadata = {
