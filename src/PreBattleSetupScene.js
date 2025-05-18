@@ -143,6 +143,8 @@ class PreBattleSetupScene extends Phaser.Scene {
         this.playerTeamTitle = this.add.text(350, 150, 'Your Team', { fontSize: '48px', fill: '#fff' }); // Store reference if needed later
         this.playerTeamSlots = []; // Array to hold slot graphics/containers
         this.playerTeamDisplays = []; // Array to hold character display objects in slots
+        this.playerTeamNameTexts = []; // Array to hold character name text objects for slots
+
         const playerSlotPositions = [
             { x: 200, y: 250 }, // Slot 1
             { x: 350, y: 250 }, // Slot 2
@@ -150,20 +152,25 @@ class PreBattleSetupScene extends Phaser.Scene {
             { x: 650, y: 250 }, // Slot 4
             { x: 800, y: 250 }, // Slot 5
         ];
+        const nameTextStyle = { fontSize: '16px', fill: '#fff', align: 'center' };
+        const nameTextYOffset = 60; // How far below the slot center the name appears
+
         playerSlotPositions.forEach((pos, index) => {
             const slot = this.add.rectangle(pos.x, pos.y, 100, 100, 0x444444).setStrokeStyle(2, 0xffffff);
             slot.setData('slotIndex', index);
             slot.setInteractive();
             // Add click handler for team slots
-            // Capture pointer and event objects
             slot.on('pointerdown', (pointer, localX, localY, event) => {
-                // Pass the event object to the handler
                 this._handleTeamSlotClick(index, event); // Pass the slot index and event
             });
             this.playerTeamSlots.push(slot);
             this.playerTeamDisplays.push(null); // Initialize display array with null
+
+            // Create and store name text object for this slot
+            const nameText = this.add.text(pos.x, pos.y + nameTextYOffset, '', nameTextStyle).setOrigin(0.5);
+            this.playerTeamNameTexts.push(nameText);
         });
-        // Player team slots created
+        // Player team slots and name texts created
 
         // --- Scrollable Player Inventory ---
         const inventoryTitleText = this.add.text(this.cameras.main.width / 2, 450, 'Member Reserve', { fontSize: '32px', fill: '#fff' }).setOrigin(0.5);
@@ -939,54 +946,73 @@ class PreBattleSetupScene extends Phaser.Scene {
     }
 
     _updateTeamSlotVisual(slotIndex, characterData) {
-        // Clear existing character icon/text in the slot if any
-        if (this.playerTeamDisplays[slotIndex]) {
-            if (this.playerTeamDisplays[slotIndex].icon) this.playerTeamDisplays[slotIndex].icon.destroy();
-            if (this.playerTeamDisplays[slotIndex].text) this.playerTeamDisplays[slotIndex].text.destroy();
-            this.playerTeamDisplays[slotIndex] = null;
+        // Get the specific name text object for this slot
+        const nameText = this.playerTeamNameTexts[slotIndex];
+
+        // Clear existing character icon in the slot if any
+        if (this.playerTeamDisplays[slotIndex] && this.playerTeamDisplays[slotIndex].icon) {
+            this.playerTeamDisplays[slotIndex].icon.destroy();
         }
+        // If playerTeamDisplays[slotIndex] was the icon itself (older structure)
+        else if (this.playerTeamDisplays[slotIndex] && typeof this.playerTeamDisplays[slotIndex].destroy === 'function') {
+            this.playerTeamDisplays[slotIndex].destroy();
+        }
+        this.playerTeamDisplays[slotIndex] = null; // Reset the display holder for this slot
 
         if (!characterData) {
-             console.log(`Slot ${slotIndex} is now empty.`);
-             return; // Nothing more to do if the slot is empty
+            console.log(`Slot ${slotIndex} is now empty.`);
+            if (nameText) {
+                nameText.setText(''); // Clear the name
+                // nameText.setVisible(false); // Optionally hide
+            }
+            return; // Nothing more to do if the slot is empty
         }
 
-        const slot = this.playerTeamSlots[slotIndex]; // Use the slot rectangle for position
-        const definition = characterData.definition;
+        // Character data exists, proceed to display
+        const slot = this.playerTeamSlots[slotIndex]; // Get the slot rectangle for position
+        const definition = characterData.definition || getCharacterDefinition(characterData.definitionId); // Ensure definition
 
         if (!definition) {
-            console.error(`Cannot update slot ${slotIndex}: Character data missing definition!`, characterData);
-            // Optionally add placeholder text
-            const errorText = this.add.text(slot.x, slot.y, 'ERR', { fontSize: '40px', fill: '#f00' }).setOrigin(0.5);
-            this.playerTeamDisplays[slotIndex] = { icon: errorText, data: characterData };
+            console.error(`Cannot update slot ${slotIndex}: Character definition not found for ID ${characterData.definitionId}!`, characterData);
+            const errorIcon = this.add.text(slot.x, slot.y, 'ERR', { fontSize: '40px', fill: '#f00' }).setOrigin(0.5);
+            this.playerTeamDisplays[slotIndex] = { icon: errorIcon, data: characterData };
+            if (nameText) {
+                nameText.setText(characterData.name || 'Error'); // Show name if available, else 'Error'
+                nameText.setVisible(true);
+            }
             return;
         }
 
         const faceIconKey = definition.faceIconKey || 'default_character_icon';
-        // --- DEBUG LOG ---
-        if (definition.id === 'elzette') {
-            console.log(`[_updateTeamSlotVisual Debug] Using faceIconKey for Elzette: '${faceIconKey}'`);
-        }
-
-        console.log(`Checking texture for slot ${slotIndex}: Key='${faceIconKey}', Exists=${this.textures.exists(faceIconKey)}`);
+        
         if (this.textures.exists(faceIconKey)) {
             const icon = this.add.image(slot.x, slot.y, faceIconKey);
-            icon.setDisplaySize(99, 99); // Resize the icon to fill the 100x100 slot
+            icon.setDisplaySize(99, 99);
             icon.setInteractive();
             icon.setData('characterData', characterData);
-            icon.on('pointerdown', (pointer) => {
-                 if (this.actionPopup && this.actionPopup.getData('targetDisplay') === icon) return;
-                 this._hideActionPopup();
-                 this._handleTeamMemberClick(icon, pointer);
-             });
-            console.log(`Created icon for slot ${slotIndex} (${characterData.name}): Key='${icon.texture.key}', Visible=${icon.visible}, X=${icon.x}, Y=${icon.y}, Depth=${icon.depth}`);
-            // Store only the icon and data (remove separate text for now)
+            // icon.setData('slotIndex', slotIndex); // slotIndex is already known in the handler
+
+            icon.on('pointerdown', (pointer, localX, localY, event) => {
+                if (this.actionPopup && this.actionPopup.getData('targetDisplay') === icon) return;
+                this._hideActionPopup(); // Hide any existing popup
+                this._handleTeamMemberClick(icon, pointer); // Pass the icon and pointer
+                if (event) event.stopPropagation();
+            });
+            
             this.playerTeamDisplays[slotIndex] = { icon: icon, data: characterData };
+            if (nameText) {
+                nameText.setText(definition.name); // Use name from definition for consistency
+                nameText.setVisible(true);
+            }
+            console.log(`Added ${definition.name} to slot ${slotIndex} with icon ${faceIconKey}`);
         } else {
-            console.error(`Texture key "${faceIconKey}" not found for character ${characterData.name} in slot ${slotIndex}.`);
-            // Add placeholder text if icon fails
-            const errorText = this.add.text(slot.x, slot.y, '?', { fontSize: '40px', fill: '#f00' }).setOrigin(0.5);
-            this.playerTeamDisplays[slotIndex] = { icon: errorText, data: characterData }; // Store text as 'icon' for cleanup
+            console.error(`Texture key "${faceIconKey}" not found for ${definition.name} in slot ${slotIndex}.`);
+            const errorIcon = this.add.text(slot.x, slot.y, '?', { fontSize: '40px', fill: '#f00' }).setOrigin(0.5);
+            this.playerTeamDisplays[slotIndex] = { icon: errorIcon, data: characterData };
+            if (nameText) {
+                nameText.setText(definition.name || 'Unknown');
+                nameText.setVisible(true);
+            }
         }
     }
 /**

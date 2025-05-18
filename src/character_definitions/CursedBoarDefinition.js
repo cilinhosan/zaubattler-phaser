@@ -116,7 +116,7 @@ export class CursedBoarDefinition extends CharacterDefinition { // Renamed class
             skillSavageRush: {
                 id: "cursed_boar_savage_rush",
                 name: "Savage Rush",
-                description: "Charges a random living enemy for 130% Attack as Dark damage. If the target is Bleeding, the Boar attacks another random living enemy not yet hit by this skill. This chain continues as long as bleeding targets are hit. If a non-Bleeding target is hit, Bleed is applied to it, and the rush ends. The rush also ends if all living enemies have been hit once.",
+                description: "Charges a random living enemy for 200% Attack as Dark damage. If the target is Bleeding, the Boar attacks another random living enemy not yet hit by this skill. This chain continues as long as bleeding targets are hit. If a non-Bleeding target is hit, Bleed is applied to it, and the rush ends. The rush also ends if all living enemies have been hit once.",
                 type: 'active',
                 cooldown: 4,
                 targetType: 'enemy'
@@ -246,7 +246,7 @@ skillSavageRush(caster, targets, ownTeam, casterContext) {
                     console.log(`Savage Rush Attack #${attackChainNumber}: Target ${currentTarget.getName()} defeated or battle over.`);
                     return;
                 }
-                let damage = Math.floor(caster.currentAtk * 1.3); // 130% ATK
+                let damage = Math.floor(caster.currentAtk * 2); // 130% ATK
                 console.log(`${caster.getName()}'s Savage Rush (Attack #${attackChainNumber}) dealing ${damage} to ${currentTarget.getName()}`);
                 SkillHelper.dealDamage(caster, currentTarget, damage, FACTION.NEUTRAL, { skillId }, casterContext.scene);
             };

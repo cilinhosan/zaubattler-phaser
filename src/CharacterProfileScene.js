@@ -218,6 +218,16 @@ export class CharacterProfileScene extends Phaser.Scene {
             }
              currentY += (buttonHeight + buttonSpacing) * skillsDisplayed;
              this.skillListEndY = currentY; // Store the Y position after all skill buttons
+
+            // Automatically display the first skill's description if skills exist
+            if (skillsDisplayed > 0 && charDef.skillMetadata) {
+                const firstSkillKey = Object.keys(charDef.skillMetadata)[0];
+                if (firstSkillKey) {
+                    const firstSkill = charDef.skillMetadata[firstSkillKey];
+                    this.displaySkillDescription(firstSkill, contentStartX, contentWidth);
+                }
+            }
+
         } else {
              this.add.text(contentStartX, currentY, 'Skills not available.', { fontFamily: 'Arial', fontSize: '32px', color: '#FF8888' }).setOrigin(0, 0);
              currentY += 45;
@@ -317,53 +327,66 @@ export class CharacterProfileScene extends Phaser.Scene {
         this.skillDescriptionContainer = this.add.container(x, containerY);
         this.skillDescriptionContainer.setDepth(100); // Ensure it's on top
 
-        // Background for the description box
-        // Create temporary texts to measure height accurately
-        const tempTitleText = this.add.text(0, 0, skill.name, titleStyle).setVisible(false);
-        const tempDescText = this.add.text(0, 0, skill.description, descStyle).setVisible(false);
-        
-        let requiredTextHeight = tempTitleText.height + tempDescText.height + padding * 3; // Title + Desc + 3 paddings
-        tempTitleText.destroy();
-        tempDescText.destroy();
+        // --- Define styles ---
+        const skillNameStyle = { ...titleStyle, wordWrap: { width: maxWidth - (padding * 2) - 80 } }; // Give some space for CD
+        const cooldownStyle = { ...titleStyle, fontSize: '24px', fontStyle: 'italic', color: '#cccccc' };
+        // descStyle already has wordWrap: { width: maxWidth - (padding * 2) }
 
-        // Ensure the box doesn't go off the bottom of the screen
-        const maxBoxHeight = this.scale.height - containerY - padding;
-        if (requiredTextHeight > maxBoxHeight) {
-            requiredTextHeight = maxBoxHeight;
-            // If text height is clamped, you might want to enable scrolling for descStyle,
-            // but Phaser's default text object doesn't support scrolling easily.
-            // For now, it will just be cut off if too long and clamped.
-            console.warn("Skill description too long for available space, may be cut off.");
+        // --- Create actual text objects ---
+        // Skill Name (will determine the height of the first line)
+        const skillNameText = this.add.text(padding, padding, skill.name, skillNameStyle).setOrigin(0, 0);
+        
+        // Cooldown Text (if applicable)
+        let skillCooldownText;
+        if (skill.type === 'active' && typeof skill.cooldown === 'number') {
+            const cooldownString = `CD: ${skill.cooldown}`;
+            skillCooldownText = this.add.text(
+                maxWidth - padding, // X: Right edge of container minus padding
+                padding,            // Y: Same top padding as skill name
+                cooldownString,
+                cooldownStyle
+            ).setOrigin(1, 0);      // Origin: Top-right for right alignment
         }
 
-
-        const background = this.add.graphics({ fillStyle: { color: 0x2a2a2a, alpha: 0.95 } });
-        background.fillRoundedRect(0, 0, maxWidth, requiredTextHeight, 8);
-        background.lineStyle(2, 0x555555, 1); // Border
-        background.strokeRoundedRect(0, 0, maxWidth, requiredTextHeight, 8);
-        this.skillDescriptionContainer.add(background);
-        
-
-        // Skill Name
-        const skillNameText = this.add.text(padding, padding, skill.name, titleStyle).setOrigin(0,0);
-        this.skillDescriptionContainer.add(skillNameText);
+        // Determine the height of the title line (max of skill name height and cooldown text height if it existed)
+        // Since they share the same Y and origin.y, skillNameText.height should be sufficient if it wraps.
+        // If skillNameText is short and cooldown text has a larger font, cooldown text height might matter,
+        // but here we assume skillNameStyle font size >= cooldownStyle font size for line height.
+        const titleLineHeight = skillNameText.height;
 
         // Skill Description
-        // Adjust descStyle if clamping height to prevent overflow, though this is a simplified approach
-        const descRenderHeight = requiredTextHeight - skillNameText.height - padding * 3;
         const skillDescText = this.add.text(
             padding,
-            skillNameText.y + skillNameText.height + padding / 2,
+            padding + titleLineHeight + (padding / 2), // Y: Below title line with some padding
             skill.description,
-            // If clamped, we might need to adjust wordWrap width or indicate truncation
-            // For now, using original descStyle. If content overflows, it will be clipped by container bounds if we set a mask.
-            // Phaser text objects don't have a built-in max height for rendering.
             descStyle
-        ).setOrigin(0,0);
-        this.skillDescriptionContainer.add(skillDescText);
+        ).setOrigin(0, 0);
 
-        // If the text is very long and the box height was clamped, the text might overflow visually.
-        // A proper solution would involve a scrollable text area or more complex text fitting.
+        // --- Calculate total required height for background ---
+        let requiredHeight = padding + titleLineHeight + (padding / 2) + skillDescText.height + padding;
+
+        // --- Clamp height and draw background ---
+        const maxBoxHeight = this.scale.height - containerY - padding;
+        if (requiredHeight > maxBoxHeight) {
+            requiredHeight = maxBoxHeight;
+            console.warn("Skill description box height clamped, content may be cut off.");
+        }
+
+        const background = this.add.graphics({ fillStyle: { color: 0x2a2a2a, alpha: 0.95 } });
+        background.fillRoundedRect(0, 0, maxWidth, requiredHeight, 8);
+        background.lineStyle(2, 0x555555, 1); // Border
+        background.strokeRoundedRect(0, 0, maxWidth, requiredHeight, 8);
+        
+        // --- Add all elements to container ---
+        this.skillDescriptionContainer.add(background);
+        this.skillDescriptionContainer.add(skillNameText);
+        if (skillCooldownText) {
+            this.skillDescriptionContainer.add(skillCooldownText);
+        }
+        this.skillDescriptionContainer.add(skillDescText);
+        
+        // Note: If skillDescText is too long for the clamped requiredHeight, it will visually overflow.
+        // A mask or a more complex scrollable text object would be needed for perfect clipping/scrolling.
     }
 
     closeSkillDescription() {
