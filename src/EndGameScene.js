@@ -23,6 +23,16 @@ class EndGameScene extends Phaser.Scene {
         bg.setScale(scale).setScrollFactor(0);
         // this.add.image(400, 300, 'endBackground');
 
+        // Ensure menu music is playing when entering the end game scene
+        const audioManager = this.registry.get('audioManager');
+        if (audioManager) {
+            audioManager.scene = this; // Ensure current scene context
+            audioManager.playMenuMusic();
+            console.log('[EndGameScene] Playing menu music.');
+        } else {
+            console.warn('[EndGameScene] AudioManager not found in registry. Menu music will not play.');
+        }
+
         const centerX = this.cameras.main.width / 2;
         const centerY = this.cameras.main.height / 2;
 

@@ -535,17 +535,26 @@ class PreBattleSetupScene extends Phaser.Scene {
             console.log("[Wake Debug] Win condition NOT met. Proceeding with next battle setup."); // <-- ADD LOG
             // --- If Lost or No Battle Result, Proceed with Setup for Next Battle ---
             console.log("PreBattleSetupScene: Player lost or no battle result, setting up next battle.");
-        const battleIndex = GameDataManager.getCurrentBattleIndex();
-        this._loadAndDisplayBattleData(battleIndex);
-        // Refresh inventory visuals
-        this._updateInventorySelectionVisuals();
-        // Reset interaction states
-        this._hideActionPopup();
-        this.isMovingState = false;
-        this.selectedInventoryCharacterData = null;
-        this.selectedInventoryDisplay = null;
-        console.log("PreBattleSetupScene: Wake update complete (for next battle setup).");
-        } // <-- ADDED Missing closing brace for the 'else' block
+            // Ensure menu music is playing if we are returning to setup scene
+            const audioManager = this.registry.get('audioManager');
+            if (audioManager) {
+                audioManager.scene = this; // Ensure current scene context
+                audioManager.playMenuMusic();
+                console.log('[PreBattleSetupScene] Playing menu music.');
+            } else {
+                console.warn('[PreBattleSetupScene] AudioManager not found in registry. Menu music will not play.');
+            }
+            const battleIndex = GameDataManager.getCurrentBattleIndex();
+            this._loadAndDisplayBattleData(battleIndex);
+            // Refresh inventory visuals
+            this._updateInventorySelectionVisuals();
+            // Reset interaction states
+            this._hideActionPopup();
+            this.isMovingState = false;
+            this.selectedInventoryCharacterData = null;
+            this.selectedInventoryDisplay = null;
+            console.log("PreBattleSetupScene: Wake update complete (for next battle setup).");
+        }
     }
 
 

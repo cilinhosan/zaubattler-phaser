@@ -612,6 +612,9 @@ class BattleScene extends Phaser.Scene {
         const battleOverMsg = "Battle Over!";
         console.log(battleOverMsg); // Keep console log
         this.addBattleLogMessage(battleOverMsg);
+        // Music stopping is now handled by the next scene's AudioManager.playMenuMusic() or playBattleMusic()
+        // which will stop current music before playing new.
+        // console.log("[BattleScene] endBattle() called. Music stopping handled by next scene.");
 
         // Ensure final global turn end hooks are called if a battle ends abruptly
         if (this.turnCounter > 0) { // Check if at least one turn started

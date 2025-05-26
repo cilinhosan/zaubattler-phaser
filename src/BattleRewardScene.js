@@ -25,6 +25,16 @@ export default class BattleRewardScene extends Phaser.Scene {
         let scale = Math.max(scaleX, scaleY);
         bg.setScale(scale).setScrollFactor(0);
 
+        // Ensure menu music is playing when entering the reward scene
+        const audioManager = this.registry.get('audioManager');
+        if (audioManager) {
+            audioManager.scene = this; // Ensure current scene context
+            audioManager.playMenuMusic();
+            console.log('[BattleRewardScene] Playing menu music.');
+        } else {
+            console.warn('[BattleRewardScene] AudioManager not found in registry. Menu music will not play.');
+        }
+
         const gameDataManager = GameDataManager; // Use the imported instance directly
         this.recruitedInThisScene.clear(); // Reset recruited set for this instance
 
